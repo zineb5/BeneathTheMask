@@ -1,0 +1,18 @@
+{
+  "name": "beneath-the-mask",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Beneath the Mask — MBTI prediction party game (4-10 players, host screen + phones)",
+  "scripts": {
+    "dev": "npm --prefix app run dev",
+    "build": "npm --prefix app run build",
+    "test": "vitest run",
+    "slice-avatars": "node scripts/slice-avatars.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "sharp": "^0.33.5",
+    "vitest": "^2.1.9"
+  }
+}
