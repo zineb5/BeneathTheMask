@@ -6,3 +6,5 @@ dist/
 supabase/.branches
 supabase/.temp
 .env.*
+.vercel
+.env*

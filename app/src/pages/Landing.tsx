@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FAMILY_META, avatarSrc, TYPE_CODES } from '../content/types';
 import { HuePicker } from '../components/atoms';
 import { useGame } from '../store/game';
-import { ApiError } from '../lib/api';
+import { ApiError, hasSupabaseEnv } from '../lib/api';
 
 const EXTRA_HUES = ['#C94F6D', '#3E8FCF', '#8A8F98'];
 const HUES = [...Object.values(FAMILY_META).map((f) => f.hue), ...EXTRA_HUES];
@@ -23,6 +23,10 @@ export function Landing() {
   const [error, setError] = useState<string | null>(null);
 
   const validName = name.trim().length > 0;
+  // Vite inlines VITE_* at BUILD time: if the deployment was built without
+  // VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY, no call can ever succeed —
+  // say so plainly instead of failing cryptically on click.
+  const envConfigured = hasSupabaseEnv;
 
   const run = async (fn: () => Promise<{ code: string }>) => {
     setBusy(true);
@@ -102,10 +106,17 @@ export function Landing() {
           </div>
         </div>
 
+        {!envConfigured && (
+          <p className="form-error" role="alert">
+            Deployment misconfigured: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY were missing at build time. Set them
+            in your host (Vercel → Settings → Environment Variables) and redeploy.
+          </p>
+        )}
+
         <button
           type="button"
           className="btn btn-primary btn-big"
-          disabled={!validName || busy}
+          disabled={!validName || busy || !envConfigured}
           onClick={() => void run(() => createRoom({ display_name: name.trim(), hue, avatar_variant: variant }))}
         >
           Create a room
@@ -127,7 +138,7 @@ export function Landing() {
           <button
             type="button"
             className="btn btn-primary"
-            disabled={!validName || joinCode.trim().length < 4 || busy}
+            disabled={!validName || joinCode.trim().length < 4 || busy || !envConfigured}
             onClick={() =>
               void run(() => joinRoom(joinCode.trim(), { display_name: name.trim(), hue, avatar_variant: variant }))
             }

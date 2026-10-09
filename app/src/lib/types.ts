@@ -78,6 +78,8 @@ export interface RoundResult {
   group_accuracy: { correct: number; total: number };
   /** One point for the subject when the group infers a different MBTI type. */
   subject_bonus?: number;
+  /** +1 for EVERY guesser when the group's inferred type matched the subject's. */
+  group_bonus?: number;
   /** Engine v2: 16-type subject ranking and its normalized top-two margin. */
   top2?: Array<{ type: string; score: number }>;
   type_confidence?: number;

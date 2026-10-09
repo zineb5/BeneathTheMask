@@ -172,6 +172,12 @@ export function RoundReveal({ isHost }: { isHost: boolean }) {
             </p>
           )}
 
+          {results.group_bonus === 1 && (
+            <p className="best-predictor">
+              The room called your type — every guesser gets +1.
+            </p>
+          )}
+
           {bestPredictor && (
             <p className="best-predictor">
               🏅 <strong>{bestPredictor.display_name}</strong> actually gets you — {bestScore}/{TOTAL_QUESTIONS}

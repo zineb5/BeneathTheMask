@@ -6,6 +6,7 @@ import {
   analyzeMisread,
   alternatesFromAxisSums,
   mulberry32,
+  rankTypesV2,
   scoreRound,
   selectQuestions,
   selectQuestionsV2,
@@ -274,6 +275,42 @@ describe('alternatesFromAxisSums', () => {
 
     const mid = { EI: [8, 2], SN: [2, 6], TF: [6, 2], JP: [2, 6] }; // min margin 4
     expect(alternatesFromAxisSums(mid).confidence).toBe('high');
+  });
+});
+
+describe('rankTypesV2 — 16-type ranking (engine v2)', () => {
+  const stacks = (bank.meta as { functions?: { stacks?: Record<string, string[]> } }).functions?.stacks ?? {};
+
+  it('ranks 16 types, returns top2 with a normalized confidence', () => {
+    const rng = mulberry32(42);
+    const { questions } = selectQuestionsV2(bank, new Set(), rng);
+    const deliveries = questions.map((q) => shuffleOptions(q, rng));
+    const answers = questions.map(() => Math.floor(rng() * 4));
+    const r = rankTypesV2(questions, deliveries, answers, stacks);
+    expect(r.top2).toHaveLength(2);
+    expect(r.top2[0].score).toBeGreaterThanOrEqual(r.top2[1].score);
+    expect(r.confidence).toBeGreaterThanOrEqual(0);
+    expect(r.confidence).toBeLessThanOrEqual(1);
+    expect(Object.keys(r.dirSums)).toHaveLength(8);
+  });
+
+  it('rewards answers aligned with a type stack (INTP pattern beats random)', () => {
+    const rng = mulberry32(7);
+    const { questions } = selectQuestionsV2(bank, new Set(), rng);
+    const deliveries = questions.map((q) => shuffleOptions(q, rng));
+    // Pick, per question, the option carrying the most I+N+T+P weight.
+    const aligned = questions.map((q, i) => {
+      let best = 0;
+      let bestW = -1;
+      deliveries[i].options.forEach((opt, j) => {
+        const w = q.opts[opt.i].w ?? {};
+        const score = (w.I ?? 0) + (w.N ?? 0) + (w.T ?? 0) + (w.P ?? 0);
+        if (score > bestW) { bestW = score; best = j; }
+      });
+      return best;
+    });
+    const r = rankTypesV2(questions, deliveries, aligned, stacks);
+    expect(r.top2[0].type).toBe('INTP');
   });
 });
 

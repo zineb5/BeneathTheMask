@@ -74,11 +74,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const groupRanking = rankTypesV2(questions, engineDeliveries, groupAnswers, stacks);
     const subjectType = subjectRanking.top2[0]?.type ?? score.subjectType;
     const groupType = score.groupType === null ? null : (groupRanking.top2[0]?.type ?? score.groupType);
-    // The subject earns one point when the room's inferred type differs from
-    // their self-reported type. Predictor scores remain exact-answer scores.
+    // Scoring, per the house rules:
+    //  - each guesser scores their exact-answer predictions (per_player_correct);
+    //  - the SUBJECT earns +1 when the room's inferred type differs from theirs;
+    //  - the GROUP (every guesser) earns +1 when its inferred type matches.
     const subjectBonus = groupType !== null && subjectType !== groupType ? 1 : 0;
-    const awardedScores = { ...score.perPlayerCorrect };
-    if (subjectBonus) awardedScores[round.subject_player_id] = subjectBonus;
+    const groupBonus = groupType !== null && groupType === subjectType ? 1 : 0;
+    const awardedScores: Record<string, number> = { ...score.perPlayerCorrect };
+    for (const pid of Object.keys(awardedScores)) awardedScores[pid] += groupBonus;
+    if (subjectBonus) awardedScores[round.subject_player_id] = (awardedScores[round.subject_player_id] ?? 0) + subjectBonus;
     const analyzer = analyzeMisread(
       questions,
       engineDeliveries,
@@ -145,6 +149,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         alternates,
         confidence,
         subject_bonus: subjectBonus,
+        group_bonus: groupBonus,
         top2: subjectRanking.top2,
         type_confidence: subjectRanking.confidence,
         group_top2: groupRanking.top2,
