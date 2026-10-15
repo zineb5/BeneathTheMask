@@ -1057,3 +1057,86 @@ input[type='range'] {
   margin-left: auto;
   margin-right: auto;
 }
+
+/* ---------- responsive hardening (audit 375px / iPhone SE) ----------
+   Rule: if a view asks for pinch-zooming, it is broken. */
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Tap targets: nothing interactive under 44px. */
+.btn:not(.btn-small),
+.option,
+.hue-swatch {
+  min-height: 44px;
+}
+
+/* Never overflow the viewport horizontally. */
+.view,
+.landing,
+.card,
+.join-card,
+.lobby-controls {
+  width: 100%;
+}
+
+/* Join row: the code input must shrink, not push the button away. */
+.join-row {
+  align-items: stretch;
+}
+.join-code-input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.join-row .btn {
+  flex: 0 0 auto;
+}
+
+/* Question header: dots + tally wrap instead of crowding. */
+.q-top {
+  flex-wrap: wrap;
+}
+
+/* Subject navigation: wrap on narrow screens. */
+.subject-nav {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  /* Room code stays readable without zoom but fits 6 chars at 375px. */
+  .room-code-char {
+    font-size: 2.3em;
+    padding: 0.14em 0.16em;
+  }
+
+  /* Self-vs-group cards stack full width. */
+  .type-cards {
+    grid-template-columns: 1fr;
+  }
+
+  /* Axis table: keep it inside the screen, smaller type. */
+  .axis-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.92em;
+  }
+
+  .q-text {
+    font-size: 1.3em;
+  }
+
+  .option {
+    font-size: 1em;
+    padding: 0.9em 1em;
+  }
+
+  .chip-name {
+    max-width: 9em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

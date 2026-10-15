@@ -53,6 +53,7 @@ export interface Player {
   subject_order_idx: number | null;
   connected: boolean;
   last_seen_at: string;
+  created_at: string;
   head_to_head: Record<string, Record<string, number>>;
 }
 
@@ -62,7 +63,7 @@ export interface Round {
   seq: number;
   subject_player_id: string;
   question_ids: number[];
-  status: 'intro' | 'question_loop' | 'reveal' | string;
+  status: 'intro' | 'question_loop' | 'reveal' | 'SKIPPED' | string;
   created_at: string;
   current_question_idx: number | null;
   /** the subject's private cursor — independent of the room's current_question_idx. */
@@ -116,6 +117,118 @@ export async function requireHost(
   const player = await requirePlayer(sb, roomId, playerId);
   if (!player.is_host) throw new HttpError(403, 'host only');
   return { room, player };
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic round controller — resolved on the fly, never stored (playtest bug:
+// host = subject used to block the round). Rule: the host controls the round
+// while eligible (connected, non-subject, fresh heartbeat); otherwise the
+// first connected non-subject by join time takes over. Fallback: the host.
+// The SUBJECT never gets flow controls, even when they host the room.
+// ---------------------------------------------------------------------------
+
+const CONTROLLER_FRESHNESS_MS = 90_000;
+
+export function controllerEligible(player: Player, subjectId: string, now: number): boolean {
+  if (!player.connected || player.id === subjectId) return false;
+  const seen = Date.parse(player.last_seen_at);
+  // A null/garbage last_seen_at counts as fresh (heartbeat may be absent).
+  return Number.isNaN(seen) || now - seen <= CONTROLLER_FRESHNESS_MS;
+}
+
+export async function resolveController(sb: SupabaseClient, room: Room, subjectId: string): Promise<Player | null> {
+  const { data, error } = await sb
+    .from('players')
+    .select('*')
+    .eq('room_id', room.id)
+    .order('created_at', { ascending: true });
+  if (error) throw new HttpError(500, error.message);
+  const players = (data ?? []) as Player[];
+  const now = Date.now();
+  const host = players.find((p) => p.is_host);
+  if (host && controllerEligible(host, subjectId, now)) return host;
+  const firstEligible = players.find((p) => controllerEligible(p, subjectId, now));
+  if (firstEligible) return firstEligible;
+  return host ?? players[0] ?? null;
+}
+
+export async function requireController(
+  sb: SupabaseClient,
+  roomId: string,
+  playerId: string,
+): Promise<{ room: Room; player: Player; round: Round }> {
+  const room = await loadRoom(sb, roomId);
+  const player = await requirePlayer(sb, roomId, playerId);
+  const round = await currentRound(sb, room);
+  if (!round) throw new HttpError(400, 'no active round');
+  const controller = await resolveController(sb, room, round.subject_player_id);
+  if (!controller || controller.id !== player.id) throw new HttpError(403, 'round controller only');
+  return { room, player, round };
+}
+
+/**
+ * Shared tail of next-round / skip-subject: deal the next subject a new round,
+ * or close the room with the final leaderboard. The skipped/revealed subject
+ * is never re-quoted (subject_order_idx only moves forward).
+ */
+export async function advanceAfterRound(
+  sb: SupabaseClient,
+  room: Room,
+  finishedRound: Round,
+): Promise<{ round?: Round; room_status: string; leaderboard?: unknown[] }> {
+  const { data: subjectRows } = await sb.from('players').select('*').eq('id', finishedRound.subject_player_id);
+  const currentSubject = ((subjectRows ?? []) as Player[])[0];
+  const currentIdx = currentSubject?.subject_order_idx ?? -1;
+
+  const { data: nextRows } = await sb
+    .from('players')
+    .select('*')
+    .eq('room_id', room.id)
+    .gt('subject_order_idx', currentIdx)
+    .order('subject_order_idx', { ascending: true })
+    .limit(1);
+  const next = ((nextRows ?? []) as Player[])[0];
+
+  if (next) {
+    const newRound = await createRoundWithDeliveries(sb, room, next.id, room.current_round_seq + 1);
+    return { round: newRound, room_status: 'ROUND_INTRO' };
+  }
+
+  const { error: fErr } = await sb.from('rooms').update({ status: 'FINAL_LEADERBOARD' }).eq('id', room.id);
+  if (fErr) throw new HttpError(500, fErr.message);
+
+  const { data: rosterRows, error: pErr } = await sb.from('players').select('*').eq('room_id', room.id);
+  if (pErr) throw new HttpError(500, pErr.message);
+  const roster = (rosterRows ?? []) as Player[];
+
+  const winsById = new Map<string, number>(
+    roster.map((p) => {
+      let sum = 0;
+      for (const inner of Object.values(p.head_to_head ?? {})) {
+        for (const v of Object.values(inner as Record<string, number>)) sum += Number(v) || 0;
+      }
+      return [p.id, sum];
+    }),
+  );
+
+  const leaderboard = roster
+    .map((p) => ({
+      player_id: p.id,
+      display_name: p.display_name,
+      hue: p.hue,
+      avatar_variant: p.avatar_variant,
+      total_score: p.total_score,
+      best_predictor_badges: p.best_predictor_badges,
+    }))
+    .sort(
+      (a, b) =>
+        b.total_score - a.total_score ||
+        b.best_predictor_badges - a.best_predictor_badges ||
+        (winsById.get(b.player_id) ?? 0) - (winsById.get(a.player_id) ?? 0) ||
+        a.display_name.localeCompare(b.display_name),
+    );
+
+  return { room_status: 'FINAL_LEADERBOARD', leaderboard };
 }
 
 /** The room's current round, or null when none exists yet (seq 0 in the lobby). */

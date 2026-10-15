@@ -5,7 +5,8 @@
 //   (a) the current delivery's ends_at has passed (far-future safety net), or
 //   (b) every connected GUESSER has predicted — the subject answers privately
 //       and never gates the room's flow, or
-//   (c) the host forces it (anti-AFK).
+//   (c) anyone forces it (anti-AFK filet; the UI only shows it to the round
+//       controller, but the CAS is the real gate).
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleOptions, HttpError, json, readBody, requirePost, requireString } from '../_shared/http.ts';
@@ -16,7 +17,6 @@ import {
   API_VERSION,
   QUESTION_WINDOW_MS,
   questionPayload,
-  requireHost,
   requirePlayer,
   Room,
   Round,
@@ -66,9 +66,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const room = await loadRoom(sb, roomId);
     const player = await requirePlayer(sb, roomId, playerId);
 
-    // Host-only force advance (the anti-AFK filet): skip even if votes are missing.
+    // Any participant may force-advance (anti-AFK filet) — the CAS below is
+    // the real gate, and the UI only surfaces the button to the round
+    // controller. Never the subject's business: they answer privately.
     const force = body.force === true;
-    if (force) await requireHost(sb, roomId, playerId);
 
     const round = await currentRound(sb, room);
     if (!round) throw new HttpError(404, 'no active round');

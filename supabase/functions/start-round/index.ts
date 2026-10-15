@@ -1,8 +1,10 @@
-// Beneath the Mask — start-round (host only): begin the question loop for the
-// room's current round (must be status 'intro').
+// Beneath the Mask — start-round (round controller only): begin the question
+// loop for the room's current round (must be status 'intro'). The controller
+// is resolved dynamically: the host while eligible (connected, non-subject,
+// fresh heartbeat), else the first connected non-subject by join time.
 
 import { handleOptions, HttpError, json, readBody, requirePost, requireString } from '../_shared/http.ts';
-import { currentRound, QUESTION_WINDOW_MS, requireHost, serviceClient } from '../_shared/client.ts';
+import { QUESTION_WINDOW_MS, requireController, serviceClient } from '../_shared/client.ts';
 
 Deno.serve(async (req: Request): Promise<Response> => {
   const opt = handleOptions(req);
@@ -14,12 +16,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const playerId = requireString(body, 'player_id');
 
     const sb = serviceClient();
-    const { room } = await requireHost(sb, roomId, playerId);
-    const round = await currentRound(sb, room);
-    if (!round) throw new HttpError(404, 'no round to start');
+    const { room, round } = await requireController(sb, roomId, playerId);
     if (round.status !== 'intro') throw new HttpError(400, 'round is not in intro');
 
-    // Far-future window: the loop advances on all-voted/host-force, never on the clock.
+    // Far-future window: the loop advances on all-voted/force, never on the clock.
     const endsAt = new Date(Date.now() + QUESTION_WINDOW_MS).toISOString();
 
     const { error: dErr } = await sb

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useGame, TOTAL_QUESTIONS } from '../store/game';
 import { Avatar } from '../components/atoms';
 import { typeContent, UNOFFICIAL_NOTE } from '../content/types';
-import type { Axis } from '../lib/types';
+import { resolveControllerId, type Axis } from '../lib/types';
 import { downloadShareCard } from '../share/card';
 
 const AXES: Axis[] = ['EI', 'SN', 'TF', 'JP'];
@@ -19,6 +19,7 @@ export function RoundReveal({ isHost }: { isHost: boolean }) {
   const results = useGame((s) => s.results);
   const players = useGame((s) => s.players);
   const round = useGame((s) => s.round);
+  const session = useGame((s) => s.session);
   const beat = useGame((s) => s.beat);
   const sendBeat = useGame((s) => s.sendBeat);
   const nextRound = useGame((s) => s.nextRound);
@@ -35,6 +36,11 @@ export function RoundReveal({ isHost }: { isHost: boolean }) {
   }
 
   const subject = players.find((p) => p.id === round?.subject_player_id);
+  // Reveal pacing + next round belong to the round controller (dynamic rule,
+  // mirrored from the players list) — never the subject.
+  const controllerId = resolveControllerId(players, subject?.id ?? null);
+  const isController =
+    Boolean(session && controllerId && session.player_id === controllerId) && subject?.id !== session?.player_id;
   const subjectContent = typeContent(results.subject_type);
   const groupContent = typeContent(results.group_type ?? results.subject_type);
   const typesDiffer = results.group_type !== null && results.subject_type !== results.group_type;
@@ -86,7 +92,7 @@ export function RoundReveal({ isHost }: { isHost: boolean }) {
               Also suspected: {alternatesToShow.join(', ')} — the mask was ambiguous here.
             </p>
           )}
-          {isHost && (
+          {isController && (
             <button type="button" className="btn btn-primary btn-big" onClick={() => sendBeat(2)}>
               Did the group see it?
             </button>
@@ -195,7 +201,7 @@ export function RoundReveal({ isHost }: { isHost: boolean }) {
             </div>
           )}
 
-          {isHost && (
+          {isController && (
             <button type="button" className="btn btn-primary btn-big" onClick={() => sendBeat(3)}>
               Who else wears this face?
             </button>
@@ -219,7 +225,7 @@ export function RoundReveal({ isHost }: { isHost: boolean }) {
           </button>
           {shareError && <p className="muted">Could not draw the card — try again.</p>}
 
-          {isHost && (
+          {isController && (
             <button type="button" className="btn btn-ghost btn-big" onClick={() => void nextRound()}>
               Next round
             </button>

@@ -113,9 +113,22 @@ check('start-game 200', sg.status === 200, JSON.stringify(sg.data));
 const round1 = sg.data.round;
 check('round has 12 question ids', Array.isArray(round1.question_ids) && round1.question_ids.length === 12);
 check('subject is one of the players', players.some((p) => p.id === round1.subject_player_id));
+// Dynamic round controller (no DB column): host unless the host IS the
+// subject, else the first connected non-subject by join time. All smoke
+// players are fresh (last_seen_at = join), so join order decides.
+const controllerOf = (round) => (round.subject_player_id === pid(host) ? pid(joined[0]) : pid(host));
+const c1 = controllerOf(round1);
+check('round controller resolved and never the subject', c1 !== round1.subject_player_id);
 
-const sr = await call('start-round', { room_id: room.id, player_id: pid(host) });
-check('start-round 200 idx 0', sr.status === 200 && sr.data.idx === 0);
+// start-round is controller-only.
+const sr = await call('start-round', { room_id: room.id, player_id: c1 });
+check('start-round 200 idx 0 (by controller)', sr.status === 200 && sr.data.idx === 0);
+const startDenied = await call('start-round', { room_id: room.id, player_id: pid(host) });
+check(
+  'start-round rejected for non-controller',
+  c1 === pid(host) ? startDenied.status === 400 : startDenied.status === 403,
+  JSON.stringify(startDenied.data),
+);
 
 const stepFwd = await call('subject-step', { room_id: room.id, player_id: round1.subject_player_id, delta: 1 });
 check('subject-step moves the subject privately', stepFwd.status === 200 && stepFwd.data.idx === 1);
@@ -158,7 +171,7 @@ const rtClient = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: 
 const early = await rtClient.from('round_results').select('*').eq('round_id', round1.id);
 check('round_results hidden from anon before reveal', early.status === 200 && (early.data ?? []).length === 0, early.error?.message);
 
-const cr = await call('compute-reveal', { room_id: room.id, player_id: pid(host) });
+const cr = await call('compute-reveal', { room_id: room.id, player_id: c1 });
 check('compute-reveal 200', cr.status === 200, JSON.stringify(cr.data));
 const result = cr.data.result;
 check('subject_type is a 4-letter type', /^[EI][SN][TF][JP]$/.test(result.subject_type), result.subject_type);
@@ -168,7 +181,7 @@ check('subject bonus rule consistent', (result.subject_type !== result.group_typ
 check('group bonus rule consistent', (result.subject_type === result.group_type) === (result.group_bonus === 1));
 check('group_accuracy total is 12', result.group_accuracy?.total === 12);
 check('analyzer is an array', Array.isArray(result.analyzer));
-const again = await call('compute-reveal', { room_id: room.id, player_id: pid(host) });
+const again = await call('compute-reveal', { room_id: room.id, player_id: c1 });
 check('idempotent re-call', again.status === 200 && again.data.result.round_id === result.round_id);
 
 const late = await rtClient.from('round_results').select('*').eq('round_id', round1.id);
@@ -179,29 +192,52 @@ const scoreSum = (scores.data ?? []).reduce((a, p) => a + p.total_score, 0);
 const expectedSum = Object.values(result.per_player_correct).reduce((a, b) => a + b, 0);
 check('scores applied to players', scoreSum === expectedSum, `${scoreSum} != ${expectedSum}`);
 
-console.log('— round 2 (subjects_limit=2) then leaderboard —');
-const nr = await call('next-round', { room_id: room.id, player_id: pid(host) });
+console.log('— round 2 (subjects_limit=2) — skip-subject flow —');
+const nr = await call('next-round', { room_id: room.id, player_id: c1 });
 check('next-round starts round 2', nr.status === 200 && nr.data.round?.seq === 2);
 const round2 = nr.data.round;
+const c2 = controllerOf(round2);
+check('round 2 controller resolved and never its subject', c2 !== round2.subject_player_id);
 
-await call('start-round', { room_id: room.id, player_id: pid(host) });
-for (let q = 0; q < 12; q++) {
-  await call('submit-answer', { room_id: room.id, player_id: round2.subject_player_id, question_idx: q, chosen_index: q % 4 });
-  for (const p of players) {
-    if (p.id === round2.subject_player_id || p.id === joined[3].id) continue; // joined[3] stays silent -> partial scoring
-    await call('submit-answer', { room_id: room.id, player_id: pid(p), question_idx: q, chosen_index: (q + 1) % 4 });
-  }
-  // joined[3] stays silent the whole round: without force, the loop would wait
-  // on them forever — the host's force-advance (anti-AFK filet) carries it.
-  const adv = await call('advance-question', { room_id: room.id, player_id: pid(host), force: true });
-  if (adv.data.status === 'reveal') break;
+await call('start-round', { room_id: room.id, player_id: c2 });
+
+// q0: everyone but joined[3] answers -> auto-advance once every guesser voted.
+await call('submit-answer', { room_id: room.id, player_id: round2.subject_player_id, question_idx: 0, chosen_index: 0 });
+for (const p of players) {
+  if (p.id === round2.subject_player_id || p.id === joined[3].id) continue;
+  await call('submit-answer', { room_id: room.id, player_id: pid(p), question_idx: 0, chosen_index: 1 });
 }
-await call('compute-reveal', { room_id: room.id, player_id: pid(host) });
+const adv0 = await call('advance-question', { room_id: room.id, player_id: c2 });
+check('auto-advance once every guesser voted', adv0.status === 200 && adv0.data.idx === 1, JSON.stringify(adv0.data));
 
-const fin = await call('next-round', { room_id: room.id, player_id: pid(host) });
-check('after last subject -> FINAL_LEADERBOARD', fin.data.room_status === 'FINAL_LEADERBOARD', JSON.stringify(fin.data));
-check('leaderboard has 5 entries', (fin.data.leaderboard ?? []).length === 5);
-const lb = fin.data.leaderboard ?? [];
+// q1: joined[3] still silent — force by a NON-controller must work too
+// (advance is open to every participant; the CAS is the real gate).
+await call('submit-answer', { room_id: room.id, player_id: round2.subject_player_id, question_idx: 1, chosen_index: 1 });
+for (const p of players) {
+  if (p.id === round2.subject_player_id || p.id === joined[3].id) continue;
+  await call('submit-answer', { room_id: room.id, player_id: pid(p), question_idx: 1, chosen_index: 2 });
+}
+const nonController2 = players.find((p) => p.id !== c2 && p.id !== round2.subject_player_id);
+const advForce = await call('advance-question', { room_id: room.id, player_id: nonController2.id, force: true });
+check('force advance open to any participant', advForce.status === 200 && advForce.data.idx === 2, JSON.stringify(advForce.data));
+
+// skip-subject: controller only; no reveal for the subject; partial scores kept.
+const skipDenied = await call('skip-subject', { room_id: room.id, player_id: nonController2.id });
+check('skip-subject rejected for non-controller', skipDenied.status === 403, JSON.stringify(skipDenied.data));
+const skipped = await call('skip-subject', { room_id: room.id, player_id: c2 });
+check(
+  'skip-subject closes the room (last subject)',
+  skipped.status === 200 && skipped.data.room_status === 'FINAL_LEADERBOARD',
+  JSON.stringify(skipped.data),
+);
+const rr2 = await rtClient.from('round_results').select('*').eq('round_id', round2.id);
+check(
+  'skipped round keeps scores but has no reveal types',
+  rr2.status === 200 && (rr2.data ?? []).length === 1 && !rr2.data[0].subject_type && !rr2.data[0].group_type,
+  JSON.stringify(rr2.data),
+);
+const lb = skipped.data.leaderboard ?? [];
+check('leaderboard has 5 entries after skip', lb.length === 5);
 const sorted = [...lb].sort((a, b) => b.total_score - a.total_score || b.best_predictor_badges - a.best_predictor_badges);
 check('leaderboard ordered by score then badges', JSON.stringify(lb) === JSON.stringify(sorted));
 

@@ -31,7 +31,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .from('players')
       .select('*')
       .eq('room_id', room.id)
-      .order('id');
+      .order('created_at', { ascending: true });
     if (plErr) throw new HttpError(500, plErr.message);
 
     const round = await currentRound(sb, room);
@@ -56,15 +56,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
         if (delivery) {
           const counts = await voteCounts(sb, room, round, roomIdx);
           const progress = await subjectAnswerProgress(sb, round.id);
-          const canSeeGauge = isSubject || player.id === room.host_player_id;
           question = {
             ...questionPayload(delivery),
             answered: counts.answered,
             expected: counts.expected,
             voted: counts.voted,
             pending: counts.pending,
-            ...(canSeeGauge ? { option_counts: counts.option_counts } : {}),
-            ...(canSeeGauge ? { subject_answered: progress.answered, subject_complete: progress.complete } : {}),
+            // The group can see anonymous vote momentum, never identities or
+            // choices. Subject completion remains private to the subject/host.
+            option_counts: counts.option_counts,
+            ...((isSubject || player.id === room.host_player_id)
+              ? { subject_answered: progress.answered, subject_complete: progress.complete }
+              : {}),
             room_idx: roomIdx,
           };
         }

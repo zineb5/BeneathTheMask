@@ -1,12 +1,18 @@
 import { useGame } from '../store/game';
 import { Avatar } from '../components/atoms';
+import { resolveControllerId } from '../lib/types';
 
-export function RoundIntro({ isHost }: { isHost: boolean }) {
+export function RoundIntro({ isHost: _ignored }: { isHost: boolean }) {
   const players = useGame((s) => s.players);
   const round = useGame((s) => s.round);
+  const session = useGame((s) => s.session);
   const beginQuestions = useGame((s) => s.beginQuestions);
 
   const subject = players.find((p) => p.id === round?.subject_player_id);
+  // start-round requires the round controller (dynamic rule, mirrored from the
+  // players list). The subject never gets flow controls, even as room host.
+  const controllerId = resolveControllerId(players, subject?.id ?? null);
+  const isController = Boolean(session && controllerId && session.player_id === controllerId) && subject?.id !== session?.player_id;
 
   return (
     <div className="round-intro">
@@ -26,7 +32,7 @@ export function RoundIntro({ isHost }: { isHost: boolean }) {
       ) : (
         <p className="muted">Drawing the next subject…</p>
       )}
-      {isHost && (
+      {isController && (
         <button type="button" className="btn btn-primary btn-big" onClick={() => void beginQuestions()}>
           Ask the first question
         </button>

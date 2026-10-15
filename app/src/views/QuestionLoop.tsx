@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { useGame, TOTAL_QUESTIONS } from '../store/game';
 import { Dots } from '../components/atoms';
-import { personalize } from '../lib/types';
+import { personalize, resolveControllerId } from '../lib/types';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
-export function QuestionLoop({ isHost }: { isHost: boolean }) {
+export function QuestionLoop({ isHost: _ignored }: { isHost: boolean }) {
   const question = useGame((s) => s.question);
   const players = useGame((s) => s.players);
   const round = useGame((s) => s.round);
@@ -15,6 +15,7 @@ export function QuestionLoop({ isHost }: { isHost: boolean }) {
   const submitAnswer = useGame((s) => s.submitAnswer);
   const advance = useGame((s) => s.advance);
   const subjectStep = useGame((s) => s.subjectStep);
+  const skipSubject = useGame((s) => s.skipSubject);
 
   // Light poll while the question loop runs: the vote tally is computed
   // server-side and votes don't touch any published table, so resync every
@@ -28,6 +29,10 @@ export function QuestionLoop({ isHost }: { isHost: boolean }) {
 
   const subject = players.find((p) => p.id === round?.subject_player_id);
   const amSubject = Boolean(subject && session && subject.id === session.player_id);
+  // Exact mirror of the backend's dynamic round-controller rule. The subject
+  // NEVER gets flow controls, even when they host the room.
+  const controllerId = resolveControllerId(players, subject?.id ?? null);
+  const isController = Boolean(session && controllerId && session.player_id === controllerId) && !amSubject;
   const firstName = subject?.display_name.split(' ')[0] ?? 'they';
 
   if (!question) {
@@ -45,7 +50,7 @@ export function QuestionLoop({ isHost }: { isHost: boolean }) {
   const expected = question.expected;
   const tally = typeof answered === 'number' && typeof expected === 'number';
   const allGuessesIn = tally && expected > 0 && answered >= expected;
-  const canSeeGauge = isHost || amSubject;
+  const canSeeGauge = true;
 
   return (
     <div className="question-loop">
@@ -124,9 +129,8 @@ export function QuestionLoop({ isHost }: { isHost: boolean }) {
         </div>
       )}
 
-      {/* Choice leanings are visible to the host and the subject only. The
-          subject is physically separated from the room, so no herding risk;
-          guessers never see leanings (nor the subject's answers). */}
+      {/* Anonymous momentum is shared with the room. It never exposes the
+          subject's answer or which player picked an option. */}
       {canSeeGauge && (
         <aside className="momentum" aria-label="anonymous momentum">
           <p className="momentum-label">the room is leaning…</p>
@@ -145,7 +149,7 @@ export function QuestionLoop({ isHost }: { isHost: boolean }) {
               );
             })}
           </div>
-          {isHost && (
+          {isController && (
             <>
               <button
                 type="button"
@@ -165,7 +169,31 @@ export function QuestionLoop({ isHost }: { isHost: boolean }) {
         </aside>
       )}
 
-      {isHost && allGuessesIn && question.subject_complete === false && (
+      {/* Recovery action — NOT a flow control: the subject disconnected and this
+          round can no longer reach a reveal. The group decides to cancel it and
+          move to the next subject. Deliberately separated from Next/Skip. */}
+      {isController && (
+        <div className="danger-zone">
+          <button
+            type="button"
+            className="btn btn-ghost btn-small"
+            onClick={() => {
+              if (
+                window.confirm(
+                  `${subject?.display_name ?? 'The subject'} is away — cancel their round? ` +
+                    'No reveal for them; predictions so far still score, and the group moves to the next subject.',
+                )
+              ) {
+                void skipSubject();
+              }
+            }}
+          >
+            Subject away? Cancel this round
+          </button>
+        </div>
+      )}
+
+      {!amSubject && allGuessesIn && question.subject_complete === false && (
         <p className="locked-note">The group is ready. Waiting for the subject to finish their private answers.</p>
       )}
 

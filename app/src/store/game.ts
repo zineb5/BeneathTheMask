@@ -113,6 +113,7 @@ interface GameState {
   submitAnswer: (chosen: number) => Promise<void>;
   computeReveal: () => Promise<void>;
   nextRound: () => Promise<void>;
+  skipSubject: () => Promise<void>;
   sendBeat: (beat: number) => void;
 }
 
@@ -506,6 +507,7 @@ export const useGame = create<GameState>()((set, get) => ({
       get().noteBackendVersion(data.version);
       if (!data.ok) {
         set({ notice: data.reason ?? 'Answer was not accepted.' });
+        void get().resync().catch(() => undefined);
         return;
       }
       set((state) => {
@@ -559,6 +561,25 @@ export const useGame = create<GameState>()((set, get) => ({
       await get().resync();
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Could not advance the game.' });
+    } finally {
+      advancing = false;
+    }
+  },
+
+  skipSubject: async () => {
+    const { session } = get();
+    if (!session || advancing) return;
+    advancing = true;
+    try {
+      const data = await call<NextRoundResponse>('skip-subject', {
+        room_id: session.room_id,
+        player_id: session.player_id,
+      });
+      if (data.leaderboard) set({ leaderboard: data.leaderboard });
+      set({ beat: 1, momentum: {}, results: null, question: null });
+      await get().resync();
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Could not skip the subject.' });
     } finally {
       advancing = false;
     }

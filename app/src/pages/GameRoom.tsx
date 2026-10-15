@@ -17,6 +17,8 @@ export function GameRoom() {
   const leave = useGame((s) => s.leave);
   const error = useGame((s) => s.error);
   const clearError = useGame((s) => s.clearError);
+  const notice = useGame((s) => s.notice);
+  const dismissNotice = useGame((s) => s.dismissNotice);
   const connected = useGame((s) => s.connected);
   const backendStale = useGame((s) => s.backendStale);
 
@@ -66,6 +68,15 @@ export function GameRoom() {
         <p className="form-error" role="alert">
           {error}{' '}
           <button type="button" className="btn btn-ghost btn-small" onClick={clearError}>
+            dismiss
+          </button>
+        </p>
+      )}
+
+      {notice && (
+        <p className="form-error" role="status">
+          {notice}{' '}
+          <button type="button" className="btn btn-ghost btn-small" onClick={dismissNotice}>
             dismiss
           </button>
         </p>

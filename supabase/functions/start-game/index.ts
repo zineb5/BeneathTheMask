@@ -33,7 +33,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .order('id'); // deterministic pre-shuffle order
     if (error) throw new HttpError(500, error.message);
     const roster = (rosterRows ?? []) as Player[];
-    if (roster.length < 2) throw new HttpError(400, 'need at least 4 players to start');
+    if (roster.length < 2) throw new HttpError(400, 'need at least 2 players to start');
 
     const order = seededShuffle(
       roster.map((p) => p.id),

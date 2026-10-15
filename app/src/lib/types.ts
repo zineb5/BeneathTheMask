@@ -29,6 +29,8 @@ export interface Player {
   best_predictor_badges: number;
   subject_order_idx: number | null;
   connected: boolean;
+  last_seen_at: string;
+  created_at: string;
 }
 
 export interface Round {
@@ -37,10 +39,28 @@ export interface Round {
   seq: number;
   subject_player_id: string;
   question_ids: number[];
-  status: 'intro' | 'question_loop' | 'reveal';
+  status: 'intro' | 'question_loop' | 'reveal' | 'SKIPPED';
   current_question_idx: number;
   /** the subject's private cursor (their own questionnaire navigation). */
   subject_idx: number | null;
+}
+
+/** Exact mirror of the backend's dynamic round-controller rule
+ *  (requireController in _shared/client.ts): the host controls the round while
+ *  eligible (connected, non-subject, fresh heartbeat), else the first
+ *  connected non-subject by join time. Fallback: the host. Never the subject. */
+export const CONTROLLER_FRESHNESS_MS = 90_000;
+
+export function resolveControllerId(players: Player[], subjectId: string | null): string | null {
+  const fresh = (p: Player): boolean => {
+    if (!p.connected || p.id === subjectId) return false;
+    const seen = Date.parse(p.last_seen_at);
+    return Number.isNaN(seen) || Date.now() - seen <= CONTROLLER_FRESHNESS_MS;
+  };
+  const byJoin = [...players].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+  const host = byJoin.find((p) => p.is_host);
+  if (host && fresh(host)) return host.id;
+  return byJoin.find(fresh)?.id ?? host?.id ?? null;
 }
 
 export type Axis = 'EI' | 'SN' | 'TF' | 'JP';

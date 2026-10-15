@@ -1,14 +1,13 @@
-// Beneath the Mask — compute-reveal (host only): score the round, persist the
-// reveal, apply points via the apply_round_scores RPC. Idempotent.
+// Beneath the Mask — compute-reveal (round controller only): score the round,
+// persist the reveal, apply points via the apply_round_scores RPC. Idempotent.
 
 import { analyzeMisread, alternatesFromAxisSums, rankTypesV2, scoreRound, ShuffledDelivery } from '../_shared/engine.ts';
 import { handleOptions, HttpError, json, readBody, requirePost, requireString } from '../_shared/http.ts';
 import {
   BANK_BY_ID,
   bank,
-  currentRound,
   Delivery,
-  requireHost,
+  requireController,
   serviceClient,
 } from '../_shared/client.ts';
 
@@ -22,9 +21,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const playerId = requireString(body, 'player_id');
 
     const sb = serviceClient();
-    const { room } = await requireHost(sb, roomId, playerId);
-    const round = await currentRound(sb, room);
-    if (!round) throw new HttpError(400, 'no active round');
+    const { round } = await requireController(sb, roomId, playerId);
     if (round.status !== 'reveal') throw new HttpError(400, 'round is not in reveal');
 
     // Idempotency: first reveal wins; later calls return the stored row as-is.
