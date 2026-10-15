@@ -25,6 +25,7 @@ import {
   subjectAnswerProgress,
   voteCounts,
 } from '../_shared/client.ts';
+import { computeAndStoreReveal } from '../_shared/reveal.ts';
 
 // The room advances when every CONNECTED guesser has voted — the subject is
 // physically separated and answers privately, so their vote never gates the
@@ -147,6 +148,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (rErr) throw new HttpError(500, rErr.message);
     const { error: rmErr } = await sb.from('rooms').update({ status: 'ROUND_REVEAL' }).eq('id', room.id);
     if (rmErr) throw new HttpError(500, rmErr.message);
+
+    // Server-side tally: the reveal is computed HERE, in the same request that
+    // flips the round to reveal — never left to "some client's browser notices
+    // and calls compute-reveal" (UVTAC9 round 2: every client connected and
+    // authorized, yet no client ever fired the trigger and the room sat on
+    // "Tallying the mask" indefinitely). Idempotent, and compute-reveal stays
+    // as the manual/force fallback.
+    try {
+      await computeAndStoreReveal(sb, room, round);
+    } catch (e) {
+      // Do not fail the transition: clients still see ROUND_REVEAL and the
+      // host/controller can force the tally via compute-reveal. The error is
+      // logged loudly instead of being silent.
+      console.error(JSON.stringify({ event: 'tally_failed', room_id: room.id, round_id: round.id, error: String(e) }));
+    }
     return json({ status: 'reveal', version: API_VERSION });
   } catch (e) {
     if (e instanceof HttpError) return json({ error: e.message }, e.status);

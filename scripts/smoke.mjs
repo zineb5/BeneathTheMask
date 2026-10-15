@@ -152,6 +152,16 @@ for (let q = 0; q < 12; q++) {
   const stale = await call('submit-answer', { room_id: room.id, player_id: pid(joined[0]), question_idx: 99, chosen_index: 0 });
   if (q === 0) check('stale question_idx rejected softly', stale.status === 200 && stale.data.ok === false);
 
+  if (q === 11) {
+    // Gating check must run BEFORE the q12 advance: since the server-side
+    // tally fix, the very advance call that flips the round to 'reveal' also
+    // computes and stores the result — there is no longer any window where
+    // the round is in reveal with results still hidden.
+    const rtPre = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+    const early = await rtPre.from('round_results').select('*').eq('round_id', round1.id);
+    check('round_results hidden from anon before reveal', early.status === 200 && (early.data ?? []).length === 0, early.error?.message);
+  }
+
   const adv = await call('advance-question', { room_id: room.id, player_id: pid(joined[1]) });
   if (q < 11) {
     if (adv.data.status !== 'question' || adv.data.idx !== q + 1) {
@@ -166,13 +176,16 @@ for (let q = 0; q < 12; q++) {
     }
   } else {
     check('advance after q12 returns reveal', adv.data.status === 'reveal', JSON.stringify(adv.data));
+    // Server-side tally: the reveal must already be stored by the same
+    // advance call — no client-side trigger needed (UVTAC9 round 2 fix).
+    const rtPost = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
+    const stored = await rtPost.from('round_results').select('round_id').eq('round_id', round1.id).not('revealed_at', 'is', null);
+    check('server-side tally stored at reveal flip', (stored.data ?? []).length === 1, stored.error?.message);
   }
 }
 
 console.log('— reveal gating —');
 const rtClient = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
-const early = await rtClient.from('round_results').select('*').eq('round_id', round1.id);
-check('round_results hidden from anon before reveal', early.status === 200 && (early.data ?? []).length === 0, early.error?.message);
 
 const cr = await call('compute-reveal', { room_id: room.id, player_id: c1 });
 check('compute-reveal 200', cr.status === 200, JSON.stringify(cr.data));
