@@ -15,6 +15,7 @@ import type {
   RoundResult,
   Session,
 } from '../lib/types';
+import { resolveControllerId } from '../lib/types';
 
 const HEARTBEAT_MS = 12_000;
 const TOTAL_QUESTIONS = 12;
@@ -48,6 +49,8 @@ interface SyncResponse {
   } | null;
   my_answers?: number[];
   results?: RoundResult | null;
+  /** Reveal-pending vote count (aggregate) so the tally button can show n/m. */
+  tally?: { predictions: number; expected: number } | null;
   version?: string;
 }
 
@@ -84,6 +87,8 @@ interface GameState {
   question: ActiveQuestion | null;
   myAnswers: number[];
   results: RoundResult | null;
+  /** Aggregate vote count while the reveal is pending (host/controller tally label). */
+  tally: { predictions: number; expected: number } | null;
   leaderboard: LeaderboardEntry[] | null;
   beat: number;
   momentum: Record<number, number>;
@@ -186,6 +191,7 @@ export const useGame = create<GameState>()((set, get) => ({
   question: null,
   myAnswers: [],
   results: null,
+  tally: null,
   leaderboard: null,
   beat: 1,
   momentum: {},
@@ -338,6 +344,7 @@ export const useGame = create<GameState>()((set, get) => ({
       question,
       myAnswers: data.my_answers ?? [],
       results,
+      tally: data.tally ?? null,
       beat: nextBeat,
       momentum,
     });
@@ -357,13 +364,18 @@ export const useGame = create<GameState>()((set, get) => ({
     }
 
     // A guesser may be the client that switches the room to ROUND_REVEAL.
-    // Always let the host finish the server-side calculation when it notices
-    // that transition, rather than leaving every screen at "Tallying".
+    // Always let the host OR the round controller finish the server-side
+    // calculation when they notice that transition, rather than leaving every
+    // screen at "Tallying". When host == subject, the controller is someone
+    // else, so host-only gating deadlocks the tally.
+    const tallyLeadId = nextRound
+      ? resolveControllerId(data.players ?? [], nextRound.subject_player_id ?? null)
+      : null;
     if (
       data.room.status === 'ROUND_REVEAL' &&
       nextRound &&
       !results &&
-      session.player_id === data.room.host_player_id &&
+      (session.player_id === data.room.host_player_id || session.player_id === tallyLeadId) &&
       revealComputingRoundId !== nextRound.id &&
       !advancing
     ) {
@@ -385,6 +397,7 @@ export const useGame = create<GameState>()((set, get) => ({
       question: null,
       myAnswers: [],
       results: null,
+      tally: null,
       leaderboard: null,
       beat: 1,
       momentum: {},
@@ -458,8 +471,11 @@ export const useGame = create<GameState>()((set, get) => ({
       });
       get().noteBackendVersion((data as { version?: string }).version);
       if (data.status === 'reveal') {
-        const { room } = get();
-        if (room && room.host_player_id === session.player_id) {
+        const { room, players, round } = get();
+        const tallyLeadId = round
+          ? resolveControllerId(players, round.subject_player_id ?? null)
+          : null;
+        if (room && (room.host_player_id === session.player_id || tallyLeadId === session.player_id)) {
           await get().computeReveal();
         }
         await get().resync();

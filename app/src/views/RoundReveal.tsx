@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGame, TOTAL_QUESTIONS } from '../store/game';
 import { Avatar } from '../components/atoms';
 import { typeContent, UNOFFICIAL_NOTE } from '../content/types';
@@ -23,14 +23,39 @@ export function RoundReveal({ isHost }: { isHost: boolean }) {
   const beat = useGame((s) => s.beat);
   const sendBeat = useGame((s) => s.sendBeat);
   const nextRound = useGame((s) => s.nextRound);
+  const tally = useGame((s) => s.tally);
+  const computeReveal = useGame((s) => s.computeReveal);
+  const room = useGame((s) => s.room);
 
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState(false);
+  // Stuck-tally escape hatch: after 60 s of waiting, the host or the round
+  // controller may force the tally manually (deadlock guard, see tally fix).
+  const [waited, setWaited] = useState(0);
+  useEffect(() => {
+    if (results?.revealed_at) return;
+    const timer = window.setInterval(() => setWaited((w) => w + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [results?.revealed_at]);
 
   if (!results || !results.revealed_at) {
+    const waitingControllerId = resolveControllerId(players, round?.subject_player_id ?? null);
+    const canForceTally =
+      Boolean(session) &&
+      (session?.player_id === room?.host_player_id || session?.player_id === waitingControllerId);
     return (
       <div className="reveal">
         <p className="waiting">Tallying the mask…</p>
+        {waited >= 60 && canForceTally && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => void computeReveal()}
+            disabled={waited < 60}
+          >
+            Tally now ({tally?.predictions ?? '—'}/{tally?.expected ?? '—'} votes in)
+          </button>
+        )}
       </div>
     );
   }

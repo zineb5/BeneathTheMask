@@ -21,9 +21,12 @@ import {
 import { handleOptions, HttpError, json, readBody, requirePost, requireString } from '../_shared/http.ts';
 import {
   BANK_BY_ID,
+  currentRound,
   Delivery,
   engineV2,
-  requireController,
+  loadRoom,
+  requirePlayer,
+  resolveController,
   serviceClient,
 } from '../_shared/client.ts';
 
@@ -37,7 +40,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const playerId = requireString(body, 'player_id');
 
     const sb = serviceClient();
-    const { round } = await requireController(sb, roomId, playerId);
+    // Tally authorization: the round controller OR the room host. The host
+    // must be able to tally even when they are the subject (UVTAC9 deadlock:
+    // host==subject -> controller-only guard 403'd the only client that ever
+    // auto-triggers the tally, and the controller's client never called it).
+    const room = await loadRoom(sb, roomId);
+    const player = await requirePlayer(sb, roomId, playerId);
+    const round = await currentRound(sb, room);
+    if (!round) throw new HttpError(400, 'no active round');
+    const controller = await resolveController(sb, room, round.subject_player_id);
+    if (player.id !== room.host_player_id && (!controller || player.id !== controller.id)) {
+      throw new HttpError(403, 'host or round controller only');
+    }
     if (round.status !== 'reveal') throw new HttpError(400, 'round is not in reveal');
 
     // Idempotency: first reveal wins; later calls return the stored row as-is.
@@ -49,12 +63,34 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .maybeSingle();
     if (existing) return json({ result: existing });
 
-    const [{ data: deliveries, error: dErr }, { data: sRows }, { data: pRows }] = await Promise.all([
+    const [{ data: deliveries, error: dErr }, { data: sRows }, { data: pRows }, { count: playerCount }] = await Promise.all([
       sb.from('question_deliveries').select('*').eq('round_id', round.id).order('question_idx', { ascending: true }),
       sb.from('subject_answers').select('*').eq('round_id', round.id),
       sb.from('predictions').select('*').eq('round_id', round.id),
+      sb.from('players').select('id', { count: 'exact', head: true }).eq('room_id', room.id),
     ]);
     if (dErr) throw new HttpError(500, dErr.message);
+
+    // Tally audit line: how much evidence existed at reveal time. A guesser who
+    // never voted does not block the tally (spec §4: abstention is allowed) —
+    // but the shortfall must be VISIBLE in the logs, not silent.
+    {
+      const perQuestion = new Map<number, number>();
+      for (const r of (pRows ?? []) as Array<{ question_idx: number }>) {
+        perQuestion.set(r.question_idx, (perQuestion.get(r.question_idx) ?? 0) + 1);
+      }
+      const guessers = Math.max(0, (playerCount ?? 1) - 1);
+      console.log(JSON.stringify({
+        event: 'tally',
+        room_id: room.id,
+        round_id: round.id,
+        tally_by: player.id,
+        subject_answers: (sRows ?? []).length,
+        predictions: (pRows ?? []).length,
+        expected_predictions: guessers * 12,
+        votes_per_question: Object.fromEntries([...perQuestion.entries()].sort((a, b) => a[0] - b[0])),
+      }));
+    }
 
     const deliveriesTyped = (deliveries ?? []) as Delivery[];
     const engineDeliveries: ShuffledDelivery[] = deliveriesTyped.map((d) => ({ options: d.shuffled_options }));

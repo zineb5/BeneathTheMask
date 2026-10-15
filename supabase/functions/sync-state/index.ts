@@ -39,6 +39,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     let question: unknown;
     let results: unknown;
+    let tally: unknown;
     const myAnswers: number[] = Array(12).fill(-1);
 
     if (round) {
@@ -96,12 +97,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
         .not('revealed_at', 'is', null)
         .maybeSingle();
       if (rr) results = rr;
+
+      // Reveal-pending: expose the aggregate vote count so the host/controller
+      // can force the tally with an honest "n/m" label instead of guessing.
+      // Aggregates only — choices stay hidden until the reveal.
+      if (!rr && round.status === 'reveal') {
+        const { count } = await sb
+          .from('predictions')
+          .select('*', { count: 'exact', head: true })
+          .eq('round_id', round.id);
+        const guessers = Math.max(0, (players ?? []).length - 1);
+        tally = { predictions: count ?? 0, expected: guessers * 12 };
+      }
     }
 
     const out: Record<string, unknown> = { room, players: players ?? [], my_answers: myAnswers, version: API_VERSION };
     if (round) out.round = round;
     if (question !== undefined) out.question = question;
     if (results !== undefined) out.results = results;
+    if (tally !== undefined) out.tally = tally;
     return json(out);
   } catch (e) {
     if (e instanceof HttpError) return json({ error: e.message }, e.status);
