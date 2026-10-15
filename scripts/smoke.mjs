@@ -111,7 +111,10 @@ console.log('— round 1 —');
 const sg = await call('start-game', { room_id: room.id, player_id: pid(host) });
 check('start-game 200', sg.status === 200, JSON.stringify(sg.data));
 const round1 = sg.data.round;
-check('round has 12 question ids', Array.isArray(round1.question_ids) && round1.question_ids.length === 12);
+// Engine v2 PR2 (adaptive routes): only delivery 0 exists at round build; the
+// remaining 11 deliveries are selected from the subject's answers as the room
+// advances. question_ids grows accordingly and is complete (12) by the reveal.
+check('round starts with its first question id', Array.isArray(round1.question_ids) && round1.question_ids.length === 1);
 check('subject is one of the players', players.some((p) => p.id === round1.subject_player_id));
 // Dynamic round controller (no DB column): host unless the host IS the
 // subject, else the first connected non-subject by join time. All smoke
@@ -176,6 +179,15 @@ check('compute-reveal 200', cr.status === 200, JSON.stringify(cr.data));
 const result = cr.data.result;
 check('subject_type is a 4-letter type', /^[EI][SN][TF][JP]$/.test(result.subject_type), result.subject_type);
 check('group_type present', /^[EI][SN][TF][JP]$/.test(result.group_type));
+// Deliveries are anon-hidden; rounds are anon-readable — question_ids is the
+// route declaration handle and must be complete (12 distinct ids) at reveal.
+const roundFinal = await rtClient.from('rounds').select('question_ids').eq('room_id', room.id).eq('seq', 1).single();
+const routeIds = roundFinal.data?.question_ids ?? [];
+check(
+  'adaptive route complete: 12 distinct question ids',
+  routeIds.length === 12 && new Set(routeIds).size === 12,
+  JSON.stringify(routeIds),
+);
 check('per_player_correct covers the 4 predictors (subject joins when bonused)', Object.keys(result.per_player_correct).length >= players.length - 1);
 check('subject bonus rule consistent', (result.subject_type !== result.group_type) === (result.subject_bonus === 1));
 check('group bonus rule consistent', (result.subject_type === result.group_type) === (result.group_bonus === 1));
@@ -201,20 +213,21 @@ check('round 2 controller resolved and never its subject', c2 !== round2.subject
 
 await call('start-round', { room_id: room.id, player_id: c2 });
 
-// q0: everyone but joined[3] answers -> auto-advance once every guesser voted.
+// q0: EVERY guesser votes (whoever the shuffled subject is) -> auto-advance.
 await call('submit-answer', { room_id: room.id, player_id: round2.subject_player_id, question_idx: 0, chosen_index: 0 });
 for (const p of players) {
-  if (p.id === round2.subject_player_id || p.id === joined[3].id) continue;
+  if (p.id === round2.subject_player_id) continue;
   await call('submit-answer', { room_id: room.id, player_id: pid(p), question_idx: 0, chosen_index: 1 });
 }
 const adv0 = await call('advance-question', { room_id: room.id, player_id: c2 });
 check('auto-advance once every guesser voted', adv0.status === 200 && adv0.data.idx === 1, JSON.stringify(adv0.data));
 
-// q1: joined[3] still silent — force by a NON-controller must work too
+// q1: one guesser stays silent — force by a NON-controller must work too
 // (advance is open to every participant; the CAS is the real gate).
+const straggler = players.find((p) => p.id !== round2.subject_player_id && p.id !== c2);
 await call('submit-answer', { room_id: room.id, player_id: round2.subject_player_id, question_idx: 1, chosen_index: 1 });
 for (const p of players) {
-  if (p.id === round2.subject_player_id || p.id === joined[3].id) continue;
+  if (p.id === round2.subject_player_id || p.id === straggler.id) continue;
   await call('submit-answer', { room_id: room.id, player_id: pid(p), question_idx: 1, chosen_index: 2 });
 }
 const nonController2 = players.find((p) => p.id !== c2 && p.id !== round2.subject_player_id);

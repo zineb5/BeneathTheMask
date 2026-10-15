@@ -6,10 +6,8 @@ import {
   analyzeMisread,
   alternatesFromAxisSums,
   mulberry32,
-  rankTypesV2,
   scoreRound,
   selectQuestions,
-  selectQuestionsV2,
   shuffleOptions,
   typeFromSums,
   AXES,
@@ -24,8 +22,8 @@ const bank = JSON.parse(
 ) as Bank;
 
 describe('bank sanity', () => {
-  it('has 98 questions with 4 options each (bank v8.1)', () => {
-    expect(bank.bank).toHaveLength(98);
+  it('has 99 questions with 4 options each (bank v9.9.2)', () => {
+    expect(bank.bank).toHaveLength(99);
     for (const q of bank.bank) expect(q.opts).toHaveLength(4);
   });
 });
@@ -205,60 +203,10 @@ describe('analyzeMisread', () => {
   });
 });
 
-describe('selectQuestionsV2 — slot composition (bank v8.1)', () => {
-  const FAMILY_PROBE = ['NT', 'NF', 'ST', 'SF'];
-  const DUEL_PAIRS = [['Ni', 'Ne'], ['Ti', 'Te'], ['Fi', 'Fe'], ['Si', 'Se']];
-  const samePair = (a: string[] | undefined, b: string[]) => !!a && a.length === b.length && a.every((x, i) => x === b[i]);
-
-  it('one draw respects the slot spec: A2 / B4(one per pair) / C4(2 EI + 2 JP) / D2', () => {
-    for (let seed = 0; seed < 200; seed++) {
-      const { questions } = selectQuestionsV2(bank, new Set(), mulberry32(seed));
-      expect(questions).toHaveLength(12);
-      expect(new Set(questions.map((q) => q.id)).size).toBe(12);
-
-      const a = questions.filter((q) => samePair(q.duel, FAMILY_PROBE));
-      expect(a).toHaveLength(2);
-
-      const b = questions.filter((q) => q.duel && !samePair(q.duel, FAMILY_PROBE));
-      expect(b).toHaveLength(4);
-      for (const [x, y] of DUEL_PAIRS) {
-        expect(b.filter((q) => samePair(q.duel, [x, y]))).toHaveLength(1);
-      }
-
-      const ei = questions.filter((q) => !!q.src && /ipip:(extraversion|introversion)/.test(q.src));
-      const jp = questions.filter((q) => !!q.src && /ipip:conscientiousness/.test(q.src));
-      expect(ei).toHaveLength(2);
-      expect(jp).toHaveLength(2);
-
-      const d = questions.filter((q) => q.id <= 63);
-      expect(d).toHaveLength(2);
-    }
-  });
-
-  it('session simulation: every round covered (>=3 per axis), slot-local reuse flagged', () => {
-    const used = new Set<number>();
-    for (let round = 0; round < 8; round++) {
-      const { questions, resetUsed } = selectQuestionsV2(bank, used, mulberry32(500 + round));
-      const cov = { EI: 0, SN: 0, TF: 0, JP: 0 };
-      for (const q of questions) {
-        for (const ax of AXES) {
-          const [p1, p2] = ax === 'EI' ? ['E', 'I'] : ax === 'SN' ? ['S', 'N'] : ax === 'TF' ? ['T', 'F'] : ['J', 'P'];
-          cov[ax] += Math.max(...q.opts.map((o) => (o.w?.[p1 as 'E'] ?? 0) + (o.w?.[p2 as 'I'] ?? 0)));
-        }
-      }
-      for (const ax of AXES) expect(cov[ax]).toBeGreaterThanOrEqual(3);
-      questions.forEach((q) => used.add(q.id));
-      // slot A holds only 3 probes for 2 picks/round: reuse must begin by round 2.
-      if (round >= 1) expect(resetUsed).toBe(true);
-    }
-  });
-
-  it('deterministic per seed', () => {
-    const a = selectQuestionsV2(bank, new Set(), mulberry32(7));
-    const b = selectQuestionsV2(bank, new Set(), mulberry32(7));
-    expect(a.questions.map((q) => q.id)).toEqual(b.questions.map((q) => q.id));
-  });
-});
+// NOTE: the v1.5 slot selector (selectQuestionsV2) and the v1 16-type ranking
+// (rankTypesV2) were superseded by engine v2.4.7 (engine_v2.ts, spec §2-3) and
+// are no longer exercised here — bank v9.9.2 deliberately breaks the old slot
+// ranges. The spec §9 fixtures live in engine_v2.test.ts.
 
 describe('alternatesFromAxisSums', () => {
   it('flips the weakest axis first and grades confidence from the smallest margin', () => {
@@ -275,42 +223,6 @@ describe('alternatesFromAxisSums', () => {
 
     const mid = { EI: [8, 2], SN: [2, 6], TF: [6, 2], JP: [2, 6] }; // min margin 4
     expect(alternatesFromAxisSums(mid).confidence).toBe('high');
-  });
-});
-
-describe('rankTypesV2 — 16-type ranking (engine v2)', () => {
-  const stacks = (bank.meta as { functions?: { stacks?: Record<string, string[]> } }).functions?.stacks ?? {};
-
-  it('ranks 16 types, returns top2 with a normalized confidence', () => {
-    const rng = mulberry32(42);
-    const { questions } = selectQuestionsV2(bank, new Set(), rng);
-    const deliveries = questions.map((q) => shuffleOptions(q, rng));
-    const answers = questions.map(() => Math.floor(rng() * 4));
-    const r = rankTypesV2(questions, deliveries, answers, stacks);
-    expect(r.top2).toHaveLength(2);
-    expect(r.top2[0].score).toBeGreaterThanOrEqual(r.top2[1].score);
-    expect(r.confidence).toBeGreaterThanOrEqual(0);
-    expect(r.confidence).toBeLessThanOrEqual(1);
-    expect(Object.keys(r.dirSums)).toHaveLength(8);
-  });
-
-  it('rewards answers aligned with a type stack (INTP pattern beats random)', () => {
-    const rng = mulberry32(7);
-    const { questions } = selectQuestionsV2(bank, new Set(), rng);
-    const deliveries = questions.map((q) => shuffleOptions(q, rng));
-    // Pick, per question, the option carrying the most I+N+T+P weight.
-    const aligned = questions.map((q, i) => {
-      let best = 0;
-      let bestW = -1;
-      deliveries[i].options.forEach((opt, j) => {
-        const w = q.opts[opt.i].w ?? {};
-        const score = (w.I ?? 0) + (w.N ?? 0) + (w.T ?? 0) + (w.P ?? 0);
-        if (score > bestW) { bestW = score; best = j; }
-      });
-      return best;
-    });
-    const r = rankTypesV2(questions, deliveries, aligned, stacks);
-    expect(r.top2[0].type).toBe('INTP');
   });
 });
 

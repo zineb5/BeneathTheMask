@@ -30,10 +30,24 @@ export interface BankQuestion {
   cat: string;
   q: string;
   opts: BankOption[];
-  /** slot metadata (bank v8.1): family probe ["NT","NF","ST","SF"] or a duel pair ["Ni","Ne"] etc. */
+  /** slot metadata (bank v8.1+): family probe ["NT","NF","ST","SF"] or a duel pair ["Ni","Ne"] etc. */
   duel?: string[];
   /** IPIP lineage for temperament slots, e.g. "ipip:extraversion-gregariousness". */
   src?: string;
+  // --- bank v9.9.2 fields (engine v2.4.7) ---
+  /** calibration lifecycle: uncalibrated | pilot_tested | validated_for_game_use. */
+  status?: string;
+  /** axis-level signal constructs this question tests (engine v2 §7 route targets). */
+  signal?: string[];
+  /** lineage/facet metadata: construct lineage + item strength. */
+  lin?: { facet?: string; strength?: string };
+  /** explicit same-family marker for the repeated-signal penalty (engine v2 §7). */
+  family?: string;
+  /** typing_route slot: part of the frozen validation/testing route (never production-hardcoded). */
+  typing_route?: boolean;
+  pair?: string;
+  /** moral-dilemma items: predictions only, never typing evidence (doctrine). */
+  prediction_only?: boolean;
 }
 
 export interface Bank {

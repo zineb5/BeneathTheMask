@@ -5,6 +5,7 @@
 import { handleOptions, HttpError, json, readBody, requirePost, requireString } from '../_shared/http.ts';
 import {
   currentRound,
+  ensureDelivery,
   loadRoom,
   API_VERSION,
   questionPayload,
@@ -43,17 +44,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (round) {
       if (round.status === 'question_loop') {
         // The subject browses their private questionnaire at their own cursor;
-        // everyone else follows the room's current_question_idx.
+        // everyone else follows the room's current_question_idx. Deliveries are
+        // created adaptively on demand (engine v2 PR2) — ensure, then read.
         const isSubject = player.id === round.subject_player_id;
         const roomIdx = round.current_question_idx ?? 0;
         const viewIdx = isSubject ? (round.subject_idx ?? 0) : roomIdx;
-        const { data: delivery } = await sb
-          .from('question_deliveries')
-          .select('*')
-          .eq('round_id', round.id)
-          .eq('question_idx', viewIdx)
-          .maybeSingle();
-        if (delivery) {
+        const delivery = await ensureDelivery(sb, roomId, round, viewIdx);
+        {
           const counts = await voteCounts(sb, room, round, roomIdx);
           const progress = await subjectAnswerProgress(sb, round.id);
           question = {

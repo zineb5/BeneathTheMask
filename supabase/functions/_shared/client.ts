@@ -9,9 +9,9 @@ import {
   Bank,
   BankQuestion,
   mulberry32,
-  selectQuestionsV2,
   shuffleOptions,
 } from './engine.ts';
+import { contextFromBank, selectNextAdaptive } from './engine_v2.ts';
 import { hashSeed, HttpError } from './http.ts';
 import bankJson from './bank.json' with { type: 'json' };
 
@@ -25,6 +25,9 @@ export function serviceClient(): SupabaseClient {
 
 export const bank = bankJson as unknown as Bank;
 export const BANK_BY_ID = new Map<number, BankQuestion>(bank.bank.map((q) => [q.id, q]));
+
+/** Engine v2 context (spec v2.4.7) — built once per bank, shared by every consumer. */
+export const engineV2 = contextFromBank(bank);
 
 // ---------------------------------------------------------------------------
 // Row shapes (mirror supabase/migrations/0001_init.sql)
@@ -274,8 +277,8 @@ export const QUESTION_WINDOW_MS = 6 * 60 * 60 * 1000;
 
 // Bump when function contracts change. The frontend warns on mismatch so a
 // stale function deploy is VISIBLE (banner) instead of silently breaking flow.
-// btm-v3: bank v8.1 (98q) + slot selector v1.5 + vote status names + subject cursor.
-export const API_VERSION = 'btm-v4';
+// btm-v5: bank v9.9.2 (99q) + engine v2.4.7 (adaptive deliveries, v2 reveal).
+export const API_VERSION = 'btm-v5';
 
 /** Anonymous-on-choices vote status for the "waiting for votes" indicator.
  *  Reflects the ROOM only: the subject's private answers are never counted —
@@ -333,7 +336,15 @@ export async function subjectAnswerProgress(
 }
 
 // ---------------------------------------------------------------------------
-// Round creation (shared by start-game and next-round)
+// Round creation (shared by start-game and next-round) — ENGINE V2.4.7 (PR2)
+// ---------------------------------------------------------------------------
+// Adaptive routes, created lazily: only delivery 0 exists at round build.
+// Delivery k (k >= 1) is selected by selectNextAdaptive from the SUBJECT's
+// answers to 0..k-1 at the moment someone first needs it (advance-question or
+// the subject's own cursor). Selection is a pure function of
+// (bank, usedIds, chosenSoFar, answersSoFar, seeded rng), so concurrent
+// creators upsert identical rows and converge. Round.question_ids grows as
+// deliveries are created; it is complete (12 ids) by the reveal.
 // ---------------------------------------------------------------------------
 
 async function collectUsedQuestionIds(sb: SupabaseClient, roomId: string): Promise<Set<number>> {
@@ -346,9 +357,102 @@ async function collectUsedQuestionIds(sb: SupabaseClient, roomId: string): Promi
   return used;
 }
 
+async function upsertDelivery(sb: SupabaseClient, roundId: string, idx: number, q: BankQuestion): Promise<void> {
+  const shuffled = shuffleOptions(q, mulberry32(hashSeed(`${roundId}:${idx}`)));
+  const { error } = await sb
+    .from('question_deliveries')
+    .upsert(
+      {
+        round_id: roundId,
+        question_idx: idx,
+        question_id: q.id,
+        // The option->original mapping lives entirely in shuffled_options ([{i,t}]).
+        shuffled_options: shuffled.options,
+      },
+      { onConflict: 'round_id,question_idx' },
+    );
+  if (error) throw new HttpError(500, error.message);
+  // Keep the round's question_ids as the route's declaration handle (engine v2
+  // §1 review 14: declared at build, answers can never rewrite it).
+  const { data: round } = await sb.from('rounds').select('question_ids').eq('id', roundId).single();
+  const ids = ((round as { question_ids: number[] } | null)?.question_ids ?? []) as number[];
+  if (!ids.includes(q.id)) {
+    const { error: aErr } = await sb
+      .from('rounds')
+      .update({ question_ids: [...ids, q.id] })
+      .eq('id', roundId);
+    if (aErr) throw new HttpError(500, aErr.message);
+  }
+}
+
 /**
- * Select 12 unused-biased questions for the room, create the round plus its 12
- * question_deliveries rows, and move the room to ROUND_INTRO / current_round_seq.
+ * Delivery `idx` must exist for the room to show question idx: create it on
+ * demand with the adaptive selector when missing. Idempotent (upsert on the
+ * delivery PK); safe under concurrent creators (identical content).
+ */
+export async function ensureDelivery(sb: SupabaseClient, roomId: string, round: Round, idx: number): Promise<Delivery> {
+  const { data: existing } = await sb
+    .from('question_deliveries')
+    .select('*')
+    .eq('round_id', round.id)
+    .eq('question_idx', idx)
+    .maybeSingle();
+  if (existing) return existing as Delivery;
+
+  // Deliveries 0..idx-1 are the invariant: idx is only reached after idx-1.
+  const { data: prior } = await sb
+    .from('question_deliveries')
+    .select('*')
+    .eq('round_id', round.id)
+    .lt('question_idx', idx)
+    .order('question_idx', { ascending: true });
+  const priorRows = (prior ?? []) as Delivery[];
+  const chosenSoFar = priorRows.map((d) => {
+    const q = BANK_BY_ID.get(d.question_id);
+    if (!q) throw new HttpError(500, `bank question ${d.question_id} not found`);
+    return q;
+  });
+  const deliveriesSoFar: Delivery[] = priorRows;
+  const { data: ansRows } = await sb
+    .from('subject_answers')
+    .select('question_idx, chosen_index')
+    .eq('round_id', round.id)
+    .lt('question_idx', idx);
+  const engineDeliveries = deliveriesSoFar.map((d) => ({ options: d.shuffled_options }));
+  const answersSoFar: Array<number | null> = chosenSoFar.map(() => null);
+  for (const r of (ansRows ?? []) as Array<{ question_idx: number; chosen_index: number }>) {
+    if (r.question_idx >= 0 && r.question_idx < chosenSoFar.length) {
+      // subject_answers stores SHUFFLED-space indexes; the selector consumes
+      // ORIGINAL option indexes (its internal deliveries are the identity
+      // permutation), so translate through the stored delivery mapping.
+      const orig = engineDeliveries[r.question_idx]?.options[r.chosen_index]?.i;
+      answersSoFar[r.question_idx] = typeof orig === 'number' ? orig : null;
+    }
+  }
+  const usedIds = await collectUsedQuestionIds(sb, roomId);
+  const pick = selectNextAdaptive(
+    engineV2,
+    usedIds,
+    chosenSoFar,
+    answersSoFar,
+    mulberry32(hashSeed(`${round.id}:${idx}`)),
+  );
+  if (!pick) throw new HttpError(500, `adaptive selection failed for question ${idx}`);
+
+  await upsertDelivery(sb, round.id, idx, pick.question);
+  const { data: created } = await sb
+    .from('question_deliveries')
+    .select('*')
+    .eq('round_id', round.id)
+    .eq('question_idx', idx)
+    .single();
+  if (!created) throw new HttpError(500, `delivery ${idx} was not created`);
+  return created as Delivery;
+}
+
+/**
+ * Create the round plus its FIRST delivery. The remaining 11 deliveries are
+ * adaptively created on demand during the question loop (see ensureDelivery).
  */
 export async function createRoundWithDeliveries(
   sb: SupabaseClient,
@@ -357,7 +461,8 @@ export async function createRoundWithDeliveries(
   seq: number,
 ): Promise<Round> {
   const usedIds = await collectUsedQuestionIds(sb, room.id);
-  const selection = selectQuestionsV2(bank, usedIds, mulberry32(hashSeed(`${room.id}:${seq}`)));
+  const pick0 = selectNextAdaptive(engineV2, usedIds, [], [], mulberry32(hashSeed(`${room.id}:${seq}:0`)));
+  if (!pick0) throw new HttpError(500, 'adaptive selection failed for question 0');
 
   const { data: roundRow, error } = await sb
     .from('rounds')
@@ -365,7 +470,7 @@ export async function createRoundWithDeliveries(
       room_id: room.id,
       seq,
       subject_player_id: subjectPlayerId,
-      question_ids: selection.questions.map((q) => q.id),
+      question_ids: [pick0.question.id],
       status: 'intro',
       current_question_idx: 0,
     })
@@ -374,18 +479,7 @@ export async function createRoundWithDeliveries(
   if (error) throw new HttpError(500, error.message);
   const round = roundRow as Round;
 
-    const deliveries = selection.questions.map((q, i) => {
-    const shuffled = shuffleOptions(q, mulberry32(hashSeed(`${round.id}:${i}`)));
-    return {
-      round_id: round.id,
-      question_idx: i,
-      question_id: q.id,
-      // The option->original mapping lives entirely in shuffled_options ([{i,t}]).
-      shuffled_options: shuffled.options,
-    };
-  });
-  const { error: dErr } = await sb.from('question_deliveries').insert(deliveries);
-  if (dErr) throw new HttpError(500, dErr.message);
+  await upsertDelivery(sb, round.id, 0, pick0.question);
 
   const { error: rErr } = await sb
     .from('rooms')

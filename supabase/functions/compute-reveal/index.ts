@@ -1,12 +1,28 @@
 // Beneath the Mask — compute-reveal (round controller only): score the round,
 // persist the reveal, apply points via the apply_round_scores RPC. Idempotent.
+//
+// Engine v2.4.7 (PR1): subject typing = candidate distribution over the
+// axis skeleton + function/duel layers + softmax; confidence per spec §7 with
+// the all-undecided Moderate cap; group typing = vote mixture (spec §5).
+// Predictor points stay on the house rules (spec §4: 1 point per exact match).
 
-import { analyzeMisread, alternatesFromAxisSums, rankTypesV2, scoreRound, ShuffledDelivery } from '../_shared/engine.ts';
+import { analyzeMisread, scoreRound, ShuffledDelivery } from '../_shared/engine.ts';
+import {
+  accumulate,
+  axisSkeleton,
+  buildRouteDeclaration,
+  candidateDistribution,
+  confidenceV2,
+  groupMixture,
+  routeTargets,
+  tippedAxes,
+  UNLIKELY_THRESHOLD,
+} from '../_shared/engine_v2.ts';
 import { handleOptions, HttpError, json, readBody, requirePost, requireString } from '../_shared/http.ts';
 import {
   BANK_BY_ID,
-  bank,
   Delivery,
+  engineV2,
   requireController,
   serviceClient,
 } from '../_shared/client.ts';
@@ -63,14 +79,41 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const score = scoreRound({ questions, deliveries: engineDeliveries, subjectAnswers, predictions });
-    const stacks = ((bank.meta.functions as { stacks?: Record<string, string[]> } | undefined)?.stacks ?? {});
-    const subjectRanking = rankTypesV2(questions, engineDeliveries, subjectAnswers, stacks);
-    const groupAnswers = score.majorityOrig.map((original, i) =>
-      original === null ? null : engineDeliveries[i].options.findIndex((option) => option.i === original),
-    );
-    const groupRanking = rankTypesV2(questions, engineDeliveries, groupAnswers, stacks);
-    const subjectType = subjectRanking.top2[0]?.type ?? score.subjectType;
-    const groupType = score.groupType === null ? null : (groupRanking.top2[0]?.type ?? score.groupType);
+
+    // ---- Engine v2.4.7 (PR1): typing -------------------------------------------------
+    const targets = routeTargets(engineV2);
+    buildRouteDeclaration(engineV2, (round.question_ids ?? []) as number[]); // locked at build; recomputed identically
+    const subjectAcc = accumulate(questions, engineDeliveries, subjectAnswers, engineV2);
+    const subjectSkeleton = axisSkeleton(subjectAcc.axisSums);
+    const askedGeneral = questions.filter((q) => !q.duel && !q.prediction_only);
+    const askedDuels = questions.filter((q) => !!q.duel);
+    const subjectDist = candidateDistribution(subjectAcc, askedGeneral, askedDuels, engineV2);
+    const subjectConfidence = confidenceV2(subjectDist, subjectSkeleton, subjectAcc, questions, targets, engineV2);
+    const subjectTipped = tippedAxes(subjectDist, subjectSkeleton);
+    const subjectFns = (() => {
+      const combined = (Object.keys(subjectAcc.dirSumsGeneral) as Array<keyof typeof subjectAcc.dirSumsGeneral>).map((fn) => ({
+        fn,
+        weight: subjectAcc.dirSumsGeneral[fn] + subjectAcc.dirSumsDuel[fn],
+      }));
+      return combined.sort((a, b) => b.weight - a.weight || a.fn.localeCompare(b.fn)).slice(0, 2).filter((f) => f.weight > 0);
+    })();
+    const subjectType = subjectDist.leader ?? 'ESTJ';
+
+    // Group profile: weighted vote mixture (spec §5). Null only when nobody predicted.
+    const pids = [...predictions.keys()];
+    let groupType: string | null = null;
+    let groupDist: typeof subjectDist | null = null;
+    let groupConfidence: typeof subjectConfidence | null = null;
+    let groupConsensus: { consensus: number[]; overallConsensus: number } = { consensus: [], overallConsensus: 0 };
+    if (pids.length > 0) {
+      const mixture = groupMixture(questions, engineDeliveries, predictions, engineV2);
+      groupDist = candidateDistribution(mixture.accumulators, askedGeneral, askedDuels, engineV2);
+      const groupSkeleton = axisSkeleton(mixture.accumulators.axisSums);
+      groupConfidence = confidenceV2(groupDist, groupSkeleton, mixture.accumulators, questions, targets, engineV2);
+      groupType = groupDist.leader;
+      groupConsensus = { consensus: mixture.consensus, overallConsensus: mixture.overallConsensus };
+    }
+
     // Scoring, per the house rules:
     //  - each guesser scores their exact-answer predictions (per_player_correct);
     //  - the SUBJECT earns +1 when the room's inferred type differs from theirs;
@@ -88,7 +131,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
       subjectType,
       groupType,
     );
-    const { alternates, confidence } = alternatesFromAxisSums(score.subjectAxisSums);
+    // "Also suspected": surviving candidates that were not ruled unlikely,
+    // best runner-ups first. "Unlikely": < 0.05, recoverable (spec §2).
+    const alsoSuspected = subjectDist.probabilities
+      .filter((p) => p.type !== subjectType && p.probability >= UNLIKELY_THRESHOLD)
+      .slice(0, 3)
+      .map((p) => p.type);
+    const confidenceBand = subjectConfidence.band;
 
     // Head-to-head deltas among the players tied at the max correct count:
     // each pairing awards +1 to the side that won more of the 12 head-to-heads.
@@ -140,17 +189,31 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .update({
         group_type: groupType,
         subject_type: subjectType,
-        per_axis: { subject: score.subjectAxisSums, group: score.groupAxisSums },
+        per_axis: {
+          subject: score.subjectAxisSums,
+          group: score.groupAxisSums,
+          // Engine v2 additions (additive keys in the existing jsonb column —
+          // spec non-goal: no schema change).
+          tipped_axes: subjectTipped,
+          unlikely: subjectDist.unlikely,
+          consensus: {
+            value: groupConsensus.overallConsensus,
+            per_question: groupConsensus.consensus,
+          },
+          presentation: subjectConfidence.band === 'Low' && subjectFns.length > 0 ? 'function_first' : 'archetype_first',
+          top_functions: subjectFns,
+          route_targets: buildRouteDeclaration(engineV2, (round.question_ids ?? []) as number[]).targetList,
+        },
         analyzer,
         group_accuracy: score.groupAccuracy,
-        alternates,
-        confidence,
+        alternates: alsoSuspected,
+        confidence: confidenceBand,
         subject_bonus: subjectBonus,
         group_bonus: groupBonus,
-        top2: subjectRanking.top2,
-        type_confidence: subjectRanking.confidence,
-        group_top2: groupRanking.top2,
-        group_type_confidence: groupRanking.confidence,
+        top2: subjectDist.probabilities.slice(0, 2).map((p) => ({ type: p.type, score: p.probability })),
+        type_confidence: subjectConfidence.value,
+        group_top2: groupDist ? groupDist.probabilities.slice(0, 2).map((p) => ({ type: p.type, score: p.probability })) : null,
+        group_type_confidence: groupConfidence ? groupConfidence.value : null,
       })
       .eq('round_id', round.id);
     if (uErr) throw new HttpError(500, uErr.message);

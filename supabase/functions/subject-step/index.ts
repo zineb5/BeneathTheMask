@@ -7,7 +7,7 @@ import { handleOptions, HttpError, json, readBody, requirePost } from '../_share
 import {
   API_VERSION,
   currentRound,
-  loadDelivery,
+  ensureDelivery,
   loadRoom,
   questionPayload,
   requirePlayer,
@@ -37,7 +37,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const nextIdx = Math.min(11, Math.max(0, (round.subject_idx ?? 0) + delta));
     await sb.from('rounds').update({ subject_idx: nextIdx }).eq('id', round.id);
 
-    const delivery = await loadDelivery(sb, round.id, nextIdx);
+    // Engine v2 PR2: the subject may browse ahead of the room — create the
+    // delivery on demand (adaptively selected from their answers so far).
+    const delivery = await ensureDelivery(sb, roomId, round, nextIdx);
     const counts = await voteCounts(sb, room, round, round.current_question_idx ?? 0);
     return json({
       ...questionPayload(delivery),

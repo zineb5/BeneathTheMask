@@ -87,27 +87,44 @@ export interface PerAxisVotes {
   JP: [number, number];
 }
 
+/** Engine v2.4.7 additions, additive keys inside per_axis (no schema change). */
+export interface V2AxisExtras {
+  /** undecided axes where process evidence tipped the letter (spec §2). */
+  tipped_axes?: Array<{ axis: Axis; selected: string; evidencePole: string; label: string }>;
+  /** candidates under 0.05 probability — recoverable, listed honestly. */
+  unlikely?: string[];
+  /** group vote consensus 1 - H/log2(K); value 0 when nobody voted (spec §5). */
+  consensus?: { value: number; per_question: number[] };
+  /** Beat 1 order: function pattern first when confidence is Low (spec §6). */
+  presentation?: 'function_first' | 'archetype_first';
+  top_functions?: Array<{ fn: string; weight: number }>;
+  /** the 4 signal constructs the route declared at build (spec §1 review 14). */
+  route_targets?: string[];
+}
+
 export interface RoundResult {
   round_id: string;
   per_player_correct: Record<string, number>;
   best_predictor_player_id: string | null;
   group_type: string | null;
   subject_type: string;
-  per_axis: { subject: PerAxisVotes; group: PerAxisVotes };
+  per_axis: { subject: PerAxisVotes; group: PerAxisVotes } & V2AxisExtras;
   analyzer: AnalyzerEntry[];
   group_accuracy: { correct: number; total: number };
   /** One point for the subject when the group infers a different MBTI type. */
   subject_bonus?: number;
   /** +1 for EVERY guesser when the group's inferred type matched the subject's. */
   group_bonus?: number;
-  /** Engine v2: 16-type subject ranking and its normalized top-two margin. */
+  /** Engine v2: candidate probabilities (top-2) from the softmax distribution. */
   top2?: Array<{ type: string; score: number }>;
+  /** Engine v2 §7: 0.65*margin + 0.20*coverage + 0.15*reliability - penalty. */
   type_confidence?: number;
   group_top2?: Array<{ type: string; score: number }>;
   group_type_confidence?: number;
-  /** runner-up types (weakest-axis flips) + how confidently the mask fit. */
+  /** "Also suspected" — surviving candidates >= 0.05, best runner-ups first. */
   alternates?: string[];
-  confidence?: 'high' | 'medium' | 'low';
+  /** Engine v2 confidence band (Low < 0.40 | Moderate 0.40-0.69 | High >= 0.70). */
+  confidence?: 'Low' | 'Moderate' | 'High';
   revealed_at: string | null;
 }
 

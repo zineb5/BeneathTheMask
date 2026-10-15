@@ -21,7 +21,7 @@ const TOTAL_QUESTIONS = 12;
 // Must match supabase/functions/_shared/client.ts API_VERSION. The backend
 // echoes it in every response; a missing/mismatched value means the deployed
 // functions are stale — the game shows a banner instead of failing silently.
-export const EXPECTED_API_VERSION = 'btm-v4';
+export const EXPECTED_API_VERSION = 'btm-v5';
 
 export interface Prefs {
   question_timer_s: number;

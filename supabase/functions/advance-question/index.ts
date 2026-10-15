@@ -12,6 +12,7 @@ import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleOptions, HttpError, json, readBody, requirePost, requireString } from '../_shared/http.ts';
 import {
   currentRound,
+  ensureDelivery,
   loadDelivery,
   loadRoom,
   API_VERSION,
@@ -120,6 +121,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
         .select('current_question_idx')
         .maybeSingle();
       if (cas) {
+        // Engine v2 PR2: the next question is selected adaptively from the
+        // subject's answers so far, then delivered. Idempotent under races.
+        await ensureDelivery(sb, roomId, round, idx + 1);
         const endsAt = new Date(Date.now() + QUESTION_WINDOW_MS).toISOString();
         await sb
           .from('question_deliveries')
@@ -134,7 +138,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         .eq('id', round.id)
         .single();
       const newIdx = (fresh as { current_question_idx: number | null } | null)?.current_question_idx ?? idx + 1;
-      const newDelivery = await loadDelivery(sb, round.id, newIdx);
+      const newDelivery = await ensureDelivery(sb, roomId, round, newIdx);
       const counts = await voteCounts(sb, room, round, newIdx);
       return json({ ...questionPayload(newDelivery), ...counts, room_idx: newIdx, version: API_VERSION });
     }
