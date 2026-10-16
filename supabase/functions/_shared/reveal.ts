@@ -16,7 +16,9 @@ import {
   buildRouteDeclaration,
   candidateDistribution,
   confidenceV2,
-  groupMixture,
+  consensusPerQuestion,
+  groupAggregate,
+  individualReadings,
   routeTargets,
   tippedAxes,
   UNLIKELY_THRESHOLD,
@@ -112,20 +114,19 @@ export async function computeAndStoreReveal(sb: SupabaseClient, room: Room, roun
   })();
   const subjectType = subjectDist.leader ?? 'ESTJ';
 
-  // Group profile: weighted vote mixture (spec §5). Null only when nobody predicted.
-  const pids = [...predictions.keys()];
-  let groupType: string | null = null;
-  let groupDist: typeof subjectDist | null = null;
-  let groupConfidence: typeof subjectConfidence | null = null;
-  let groupConsensus: { consensus: number[]; overallConsensus: number } = { consensus: [], overallConsensus: 0 };
-  if (pids.length > 0) {
-    const mixture = groupMixture(questions, engineDeliveries, predictions, engineV2);
-    groupDist = candidateDistribution(mixture.accumulators, askedGeneral, askedDuels, engineV2);
-    const groupSkeleton = axisSkeleton(mixture.accumulators.axisSums);
-    groupConfidence = confidenceV2(groupDist, groupSkeleton, mixture.accumulators, questions, targets, engineV2);
-    groupType = groupDist.leader;
-    groupConsensus = { consensus: mixture.consensus, overallConsensus: mixture.overallConsensus };
-  }
+  // Group profile — spec §5 v2.6/review 18: THREE profiles, always computed.
+  // INDIVIDUAL READINGS: each predictor through the SAME scoring pipeline as
+  // the subject, separate accumulator set (a vote is a full claim, not a
+  // probability — pilot-data amendment). GROUP AGGREGATE: unweighted mean of
+  // VALID individual posteriors, renormalized — never a vote mixture. With 2
+  // predictors reading ENFP and ISTJ the aggregate shows TWO peaks ("divided").
+  const readings = individualReadings(questions, engineDeliveries, predictions, targets, engineV2);
+  const aggregate = groupAggregate(readings, engineV2);
+  const consensusProfile = consensusPerQuestion(questions, engineDeliveries, predictions);
+  const groupType = aggregate.uniform ? null : (aggregate.probabilities[0]?.type ?? null);
+  /** group confidence displayed from the aggregate leader's own probability;
+   *  agreement controls narration, never computation (spec §5). */
+  const groupLeaderP = aggregate.probabilities[0]?.probability ?? 0;
 
   // Scoring, per the house rules:
   //  - each guesser scores their exact-answer predictions (per_player_correct);
@@ -210,12 +211,28 @@ export async function computeAndStoreReveal(sb: SupabaseClient, room: Room, roun
         tipped_axes: subjectTipped,
         unlikely: subjectDist.unlikely,
         consensus: {
-          value: groupConsensus.overallConsensus,
-          per_question: groupConsensus.consensus,
+          value: consensusProfile.overallConsensus,
+          per_question: consensusProfile.consensus,
         },
         presentation: subjectConfidence.band === 'Low' && subjectFns.length > 0 ? 'function_first' : 'archetype_first',
         top_functions: subjectFns,
         route_targets: buildRouteDeclaration(engineV2, (round.question_ids ?? []) as number[]).targetList,
+        // Spec §5/§6: individual readings (PREDICTION GAPS — divergence proves
+        // nothing about who was right) + agreement narration, stored per
+        // predictor: answered/abstention counts + individual confidence.
+        readings: aggregate.readings.map((r) => ({
+          player_id: r.playerId,
+          type: r.type,
+          top_probability: r.topProbability,
+          answered_count: r.answeredCount,
+        })),
+        abstentions: readings
+          .filter((r) => r.abstentionCount > 0)
+          .map((r) => ({ player_id: r.playerId, abstention_count: r.abstentionCount })),
+        individual_confidence: readings
+          .filter((r) => r.valid && r.individualConfidence)
+          .map((r) => ({ player_id: r.playerId, band: r.individualConfidence!.band, value: r.individualConfidence!.value })),
+        agreement: aggregate.agreement,
       },
       analyzer,
       group_accuracy: score.groupAccuracy,
@@ -225,8 +242,8 @@ export async function computeAndStoreReveal(sb: SupabaseClient, room: Room, roun
       group_bonus: groupBonus,
       top2: subjectDist.probabilities.slice(0, 2).map((p) => ({ type: p.type, score: p.probability })),
       type_confidence: subjectConfidence.value,
-      group_top2: groupDist ? groupDist.probabilities.slice(0, 2).map((p) => ({ type: p.type, score: p.probability })) : null,
-      group_type_confidence: groupConfidence ? groupConfidence.value : null,
+      group_top2: aggregate.uniform ? null : aggregate.probabilities.slice(0, 2).map((p) => ({ type: p.type, score: p.probability })),
+      group_type_confidence: aggregate.uniform ? null : groupLeaderP,
     })
     .eq('round_id', round.id);
   if (uErr) throw new HttpError(500, uErr.message);

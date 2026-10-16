@@ -1,4 +1,4 @@
-// Beneath the Mask — engine v2.4.7 spec §9 testing route.
+// Beneath the Mask — engine v2.7.5 spec §9 testing route (bank v10.2).
 // Every fixture below maps to a line of spec §9 (vitest fixtures list).
 
 import { describe, expect, it } from 'vitest';
@@ -6,30 +6,42 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import type { Bank, BankQuestion, ShuffledDelivery } from '../supabase/functions/_shared/engine';
-import { AXES, mulberry32 } from '../supabase/functions/_shared/engine';
+import { AXES, isAbstainOption, mulberry32 } from '../supabase/functions/_shared/engine';
 import {
   accumulate,
-  accumulateMixture,
   axisFit,
   axisSkeleton,
   buildRouteDeclaration,
   candidateDistribution,
   candidateSet,
+  channelEIG,
   confidenceV2,
+  consensusPerQuestion,
   contextFromBank,
   derivedFnEvidence,
+  duelEIG,
   duelFit,
+  duelOptionFunction,
+  duelOptionProbs,
+  duelPredictive,
   effectiveWeight,
   entropyBits,
   expectedInformationGain,
   functionFit,
-  groupMixture,
+  groupAggregate,
+  individualReadings,
   optionProbabilities,
+  pairPosteriorAfterObserving,
+  pairPrior,
+  pairScore,
   revealFor,
   routeTargets,
   selectAdaptiveRoute,
   selectNextAdaptive,
   sensitivityMultiplier,
+  stackPositionWeight,
+  tippedAxes,
+  DUEL_TAU,
   type EngineV2Context,
 } from '../supabase/functions/_shared/engine_v2';
 
@@ -47,7 +59,7 @@ function q(id: number, partial: Partial<BankQuestion> & Pick<BankQuestion, 'opts
   return { id, cat: 'test', q: `Q${id}?`, status: 'uncalibrated', ...partial };
 }
 
-describe('bank v9.9.2 sanity + §9 "weight 2 impossible uncalibrated"', () => {
+describe('bank v10.2 sanity + §9 "weight 2 impossible uncalibrated"', () => {
   it('has 99 questions, all uncalibrated, zero weights at 2', () => {
     expect(bank.bank).toHaveLength(99);
     for (const item of bank.bank) {
@@ -215,52 +227,248 @@ describe('§1/§7 route_targets locked before answers', () => {
   });
 });
 
-describe('§5 group profile: 4/7-3/7 -> mixed mixture; all-abstain -> uniform + consensus 0', () => {
-  // Fixture: only question 0 carries axis weight; the rest are unscored so the
-  // 4/7-3/7 split is the ONLY axis evidence in play.
-  const mixed: BankQuestion[] = [
-    q(9600, {
+describe('§5 three profiles (v2.6/review 18): individual readings + mean aggregate', () => {
+  // Fixture: the first THREE questions carry the only axis weight (E/I with
+  // different surface constructs); the rest are fn-only filler, so each
+  // individual reading is a sharp E-types-vs-I-types posterior.
+  const ei = (id: number, bE: string, bI: string): BankQuestion =>
+    q(id, {
       opts: [
-        { t: 'E', w: { E: 1 }, b: ['social-initiation'] },
-        { t: 'I', w: { I: 1 }, b: ['solitude-preference'] },
+        { t: 'E', w: { E: 1 }, b: [bE] },
+        { t: 'I', w: { I: 1 }, b: [bI] },
         { t: 'x', w: {}, b: ['possibility-exploration'] },
-        { t: 'y', w: {}, b: ['mechanism-analysis'] },
+        { t: 'no clue', w: {}, b: ['non-diagnostic'] },
       ],
-    }),
-    ...Array.from({ length: 11 }, (_, i) =>
+    });
+  const mixed: BankQuestion[] = [
+    ei(9600, 'social-initiation', 'solitude-preference'),
+    ei(9601, 'stimulation-seeking', 'reflective-processing'),
+    ei(9602, 'social-initiation', 'solitude-preference'),
+    ...Array.from({ length: 9 }, (_, i) =>
       q(9610 + i, {
-        opts: [0, 1, 2, 3].map((k) => ({ t: `o${k}`, w: {}, b: ['possibility-exploration'] })),
+        opts: [
+          { t: 'o0', w: {}, b: ['possibility-exploration'] },
+          { t: 'o1', w: {}, b: ['possibility-exploration'] },
+          { t: 'o2', w: {}, b: ['possibility-exploration'] },
+          { t: 'no clue', w: {}, b: ['non-diagnostic'] },
+        ],
       }),
     ),
   ];
   const deliveries = identityDeliveries(mixed);
+  const targets = routeTargets(ctx);
 
-  it('a 4/7-3/7 split keeps BOTH sides in the group profile (mixture, not majority)', () => {
+  it('a 4/7-3/7 split keeps BOTH sides in the group profile (mean of posteriors, not majority)', () => {
     const predictions = new Map<string, Array<number | null>>();
     for (let i = 0; i < 7; i++) {
-      predictions.set(`p${i}`, mixed.map(() => (i < 4 ? 0 : 1)));
+      predictions.set(`p${i}`, mixed.map((_, qi) => (qi < 3 ? (i < 4 ? 0 : 1) : 2)));
     }
-    const mix = groupMixture(mixed, deliveries, predictions, ctx);
-    expect(mix.accumulators.axisSums.E).toBeCloseTo(4 / 7, 5);
-    expect(mix.accumulators.axisSums.I).toBeCloseTo(3 / 7, 5);
-    expect(mix.accumulators.axisSums.E).toBeGreaterThan(mix.accumulators.axisSums.I);
-    expect(mix.consensus[0]).toBeCloseTo(1 - entropyBits([4 / 7, 3 / 7, 0, 0]) / 2, 5);
+    const readings = individualReadings(mixed, deliveries, predictions, targets, ctx);
+    expect(readings.filter((r) => r.valid)).toHaveLength(7);
+    const aggregate = groupAggregate(readings, ctx);
+    // Two distinct individual leaders (E-types vs I-types): the honest mean
+    // shows the division instead of inventing a hybrid midpoint.
+    const leaderLetters = new Set(aggregate.readings.map((r) => r.type[0]));
+    expect(leaderLetters.size).toBeGreaterThanOrEqual(2);
+    expect(aggregate.uniform).toBe(false);
+    expect(aggregate.probabilities.reduce((s, p) => s + p.probability, 0)).toBeCloseTo(1, 9);
+    // Consensus reflects the 4/7-3/7 vote on question 0.
+    const consensus = consensusPerQuestion(mixed, deliveries, predictions);
+    expect(consensus.consensus[0]).toBeCloseTo(1 - entropyBits([4 / 7, 3 / 7, 0, 0]) / 2, 5);
   });
 
-  it('all-abstain question -> consensus 0 and zero evidence', () => {
-    const mix = groupMixture(mixed, deliveries, new Map(), ctx);
-    expect(mix.consensus[0]).toBe(0);
-    expect(mix.accumulators.scoredAnswers).toBe(0);
-  });
-
-  it('accumulateMixture average matches groupMixture accumulators', () => {
+  it('1 predictor -> the group posterior IS their own', () => {
     const predictions = new Map<string, Array<number | null>>([
-      ['a', mixed.map(() => 0)],
-      ['b', mixed.map(() => 1)],
+      ['solo', mixed.map((_, qi) => (qi < 3 ? 0 : 2))],
     ]);
-    const viaMix = accumulateMixture(mixed, deliveries, [[...predictions.get('a')!], [...predictions.get('b')!]], ctx);
-    const viaGroup = groupMixture(mixed, deliveries, predictions, ctx);
-    expect(viaGroup.accumulators.axisSums).toEqual(viaMix.axisSums);
+    const readings = individualReadings(mixed, deliveries, predictions, targets, ctx);
+    const aggregate = groupAggregate(readings, ctx);
+    const own = readings[0].profile!.probabilities;
+    for (const p of aggregate.probabilities) {
+      expect(p.probability).toBeCloseTo(own.find((x) => x.type === p.type)?.probability ?? 0, 9);
+    }
+  });
+
+  it('2 opposed predictors -> two peaks (divided), no invented hybrid', () => {
+    const predictions = new Map<string, Array<number | null>>([
+      ['proE', mixed.map((_, qi) => (qi < 3 ? 0 : 3))],
+      ['proI', mixed.map((_, qi) => (qi < 3 ? 1 : 3))],
+    ]);
+    const readings = individualReadings(mixed, deliveries, predictions, targets, ctx);
+    const aggregate = groupAggregate(readings, ctx);
+    expect(aggregate.agreement).toBe('divided');
+    const [r1, r2] = aggregate.readings;
+    // The leaders genuinely disagree on the E/I pole...
+    expect(r1.type[0]).not.toBe(r2.type[0]);
+    // ...and the mean posterior splits its mass across the two poles instead
+    // of inventing a hybrid midpoint (spec §5: two peaks, "divided").
+    const eMass = aggregate.probabilities.filter((p) => p.type[0] === 'E').reduce((s, p) => s + p.probability, 0);
+    expect(eMass).toBeGreaterThan(0.35);
+    expect(eMass).toBeLessThan(0.65);
+    // Both individual leaders hold real mass in the aggregate.
+    for (const r of [r1, r2]) {
+      const p = aggregate.probabilities.find((x) => x.type === r.type)!.probability;
+      expect(p).toBeGreaterThan(1 / 16); // above uniform: the reading survives
+    }
+    // Sanity: the aggregate is still a normalized distribution.
+    expect(aggregate.probabilities.reduce((s, p) => s + p.probability, 0)).toBeCloseTo(1, 9);
+  });
+
+  it('all-abstain -> uniform + consensus 0', () => {
+    // Every predictor picks the no-clue option on every question: invalid
+    // readers, uniform aggregate, consensus 0 (spec §5 + §4 abstention).
+    const allNoClue = mixed.map((q) => q.opts.findIndex(isAbstainOption));
+    expect(allNoClue.every((i) => i >= 0)).toBe(true);
+    const predictions = new Map<string, Array<number | null>>([
+      ['a1', allNoClue],
+      ['a2', allNoClue],
+    ]);
+    const readings = individualReadings(mixed, deliveries, predictions, targets, ctx);
+    expect(readings.every((r) => !r.valid)).toBe(true);
+    expect(readings.reduce((s, r) => s + r.abstentionCount, 0)).toBe(mixed.length * 2);
+    const aggregate = groupAggregate(readings, ctx);
+    expect(aggregate.uniform).toBe(true);
+    expect(aggregate.probabilities).toHaveLength(16);
+    for (const p of aggregate.probabilities) expect(p.probability).toBeCloseTo(1 / 16, 9);
+    const consensus = consensusPerQuestion(mixed, deliveries, predictions);
+    expect(consensus.consensus.every((c) => c === 0)).toBe(true);
+    expect(consensus.overallConsensus).toBe(0);
+  });
+
+  it('valid predictor = >= 1 real typing answer AND not entirely abstaining', () => {
+    // ghost: no-clue everywhere -> invalid, abstentions counted. real: one
+    // real E answer + no-clue elsewhere -> valid with answeredCount 1.
+    const noClue = mixed.map((q) => q.opts.findIndex(isAbstainOption));
+    const predictions = new Map<string, Array<number | null>>([
+      ['ghost', noClue],
+      ['real', [0, ...noClue.slice(1)]],
+    ]);
+    const readings = individualReadings(mixed, deliveries, predictions, targets, ctx);
+    const byPlayer = new Map(readings.map((r) => [r.playerId, r]));
+    expect(byPlayer.get('ghost')!.valid).toBe(false);
+    expect(byPlayer.get('ghost')!.abstentionCount).toBe(mixed.length);
+    expect(byPlayer.get('real')!.valid).toBe(true);
+    expect(byPlayer.get('real')!.answeredCount).toBe(1);
+    expect(byPlayer.get('real')!.abstentionCount).toBe(mixed.length - 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec §3 channel 2 — duel mathematics (reviews 19-23)
+// ---------------------------------------------------------------------------
+
+describe('§3 channel 2 — duel mathematics', () => {
+  const DUELS = [67, 69, 71, 73].map((id) => bank.bank.find((b) => b.id === id)!);
+  const axisIdx = (a: string) => (a === 'EI' ? 0 : a === 'SN' ? 1 : a === 'TF' ? 2 : 3);
+  const empty = (): ReturnType<typeof accumulate> => accumulate([], [], [], ctx);
+
+  it('Q67/Q69/Q71/Q73: axis-EIG ~ 0 AND duel-EIG > 0 when the pair is unsettled', () => {
+    const cases: Array<[BankQuestion, string, string]> = [
+      [DUELS[0], 'SN', 'N'],
+      [DUELS[1], 'TF', 'T'],
+      [DUELS[2], 'TF', 'F'],
+      [DUELS[3], 'SN', 'S'],
+    ];
+    for (const [q, axis, letter] of cases) {
+      const current = Object.keys(ctx.stacks)
+        .filter((t) => t[axisIdx(axis)] === letter)
+        .map((type) => ({ type, probability: 1 / 8 }));
+      const axisEig = expectedInformationGain(q, current, ctx);
+      const duelEig = duelEIG(q, current, empty(), ctx);
+      expect(Math.abs(axisEig)).toBeLessThan(1e-9); // axis-free by design (review 17)
+      expect(duelEig).toBeGreaterThan(1e-6); // the duel channel sees the value
+    }
+  });
+
+  it('settled pair -> duel-EIG ~ 0', () => {
+    const q67 = DUELS[0];
+    const niIdx = q67.opts.findIndex((o) => duelOptionFunction(o, q67.duel ?? []) === 'Ni');
+    // Six Ni answers: dirSums_duel[Ni] = 6 — the pair belief is settled, so
+    // the current uncertainty is ~0 and another Ni/Ne duel adds nothing.
+    const qs = Array.from({ length: 6 }, () => q67);
+    const acc = accumulate(qs, identityDeliveries(qs), qs.map(() => niIdx), ctx);
+    const current = Object.keys(ctx.stacks).map((type) => ({ type, probability: 1 / 16 }));
+    const unsettled = duelEIG(q67, current, empty(), ctx);
+    const settled = duelEIG(q67, current, acc, ctx);
+    expect(settled).toBeLessThan(unsettled);
+    expect(settled).toBeLessThan(0.05);
+  });
+
+  it('sum(P_duel) == 1 for the four duels x all 16 types', () => {
+    for (const q of DUELS) {
+      for (const t of Object.keys(ctx.stacks)) {
+        const p = duelOptionProbs(q, t, empty(), ctx);
+        expect(p.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 9);
+      }
+    }
+  });
+
+  it('pair_score = stack_position_weight + beta * dirSums_duel; weights 2/1/0.5/0', () => {
+    expect(stackPositionWeight('INTJ', 'Ni', ctx)).toBe(2);
+    expect(stackPositionWeight('INTJ', 'Te', ctx)).toBe(1);
+    expect(stackPositionWeight('INTJ', 'Fi', ctx)).toBe(0.5);
+    expect(stackPositionWeight('INTJ', 'Se', ctx)).toBe(0);
+    expect(stackPositionWeight('INTJ', 'Ne', ctx)).toBe(0);
+    expect(pairScore('INTJ', 'Ni', empty(), ctx)).toBe(2);
+    const withDuel = accumulate([DUELS[0]], identityDeliveries([DUELS[0]]), [0], ctx);
+    expect(pairScore('INTJ', 'Ni', withDuel, ctx)).toBeCloseTo(2 + withDuel.dirSumsDuel.Ni, 9);
+  });
+
+  it('Bayesian update: pair_posterior(o) ∝ prior x P_duel(o|f), normalized over the pair', () => {
+    const q67 = DUELS[0];
+    const prior: [number, number] = [0.7, 0.3];
+    const post = pairPosteriorAfterObserving(q67, 0, prior, empty(), ctx);
+    expect(duelOptionFunction(q67.opts[0], q67.duel ?? [])).toBe('Ni');
+    const l1 = Math.exp(2 / DUEL_TAU);
+    const l2 = Math.exp(1 / DUEL_TAU);
+    expect(post[0]).toBeCloseTo((prior[0] * l1) / (prior[0] * l1 + prior[1] * l2), 9);
+    expect(post[0] + post[1]).toBeCloseTo(1, 9);
+    expect(post[0]).toBeGreaterThan(prior[0]);
+    // A no-clue option is uninformative: posterior == prior.
+    const noClue = q67.opts.findIndex(isAbstainOption);
+    expect(noClue).toBeGreaterThanOrEqual(0);
+    const postNC = pairPosteriorAfterObserving(q67, noClue, prior, empty(), ctx);
+    expect(postNC[0]).toBeCloseTo(prior[0], 12);
+  });
+
+  it('P_predictive is a candidate mixture and sums to 1', () => {
+    const q67 = DUELS[0];
+    const current = candidateDistribution(
+      accumulate([bank.bank[0]], identityDeliveries([bank.bank[0]]), [0], ctx),
+      [bank.bank[0]],
+      [],
+      ctx,
+    ).probabilities;
+    const mix = duelPredictive(q67, current, empty(), ctx);
+    expect(mix.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 9);
+  });
+
+  it('AXIS ISOLATION: function evidence changes P_axis by exactly 0', () => {
+    const q67 = DUELS[0];
+    const current = Object.keys(ctx.stacks).map((type) => ({ type, probability: 1 / 16 }));
+    const before = expectedInformationGain(q67, current, ctx);
+    const rich = accumulate([q67, q67], identityDeliveries([q67, q67]), [0, 0], ctx);
+    const after = expectedInformationGain(q67, current, ctx);
+    expect(after).toBeCloseTo(before, 12);
+    // The duel channel reacts to the same evidence — two distributions.
+    expect(duelEIG(q67, current, rich, ctx)).not.toBeCloseTo(duelEIG(q67, current, empty(), ctx), 6);
+    // And the channel router sends function duels to channel 2:
+    expect(channelEIG(q67, current, rich, ctx)).toBeCloseTo(duelEIG(q67, current, rich, ctx), 12);
+  });
+
+  it('pair prior is the candidate-mixture stack compatibility (review 22)', () => {
+    const q67 = DUELS[0];
+    // Candidates where Ni is dominant (INTJ/INFJ) at 50/50: prior favors Ni.
+    const current = [
+      { type: 'INTJ', probability: 0.5 },
+      { type: 'INFJ', probability: 0.5 },
+    ];
+    const [pNi] = pairPrior(q67, current, ctx);
+    expect(pNi).toBeGreaterThan(0.5);
+    // Uniform current: Ni sits somewhere in the stacks, prior reflects the
+    // bank's stack composition — and always sums to 1.
+    const u = pairPrior(q67, Object.keys(ctx.stacks).map((type) => ({ type, probability: 1 / 16 })), ctx);
+    expect(u[0] + u[1]).toBeCloseTo(1, 9);
   });
 });
 
@@ -354,11 +562,13 @@ describe('§3 adaptive selection: coverage floor, no duplicates, entropy fallbac
       chosen.push(pick!.question);
       answers.push(null);
     }
-    // Every coverage serve happens before any pure-EIG pick, and by the time
-    // the selector switches to EIG every axis has >=2 opportunities (a single
-    // question can cover two axes, so 3 picks may suffice).
+    // Every coverage serve (family probe or needed axis) happens before any
+    // pure-EIG pick; by the time the selector switches to EIG every axis has
+    // >=2 opportunities (a single question can cover two axes, so 3 picks may
+    // suffice). Channel 3 (family probe, spec §3) is part of the coverage
+    // prefix and fires first while family evidence is untouched.
     const firstEig = vias.indexOf('max_eig');
-    expect(vias.slice(0, firstEig).every((v) => v === 'needed_axis')).toBe(true);
+    expect(vias.slice(0, firstEig).every((v) => v === 'needed_axis' || v === 'family_probe')).toBe(true);
     const opportunities: Record<string, number> = { EI: 0, SN: 0, TF: 0, JP: 0 };
     for (const x of chosen.slice(0, firstEig)) {
       for (const axis of AXES) {
@@ -371,12 +581,51 @@ describe('§3 adaptive selection: coverage floor, no duplicates, entropy fallbac
 
   it('exhausted pool -> entropy fallback still returns a question', () => {
     // One-question bank that is already used: the used-set reset kicks in and
-    // the entropy fallback path stays reachable.
+    // the pick still lands (max-EIG on the only question with real signal).
     const tiny = contextFromBank({ meta: bank.meta, bank: [bank.bank[0]] });
     const pick = selectNextAdaptive(tiny, new Set([bank.bank[0].id]), [], [], mulberry32(1));
     expect(pick).not.toBeNull();
     expect(pick!.question.id).toBe(bank.bank[0].id);
     expect(pick!.resetUsed).toBe(true);
+  });
+
+  it('exhausted DISCRIMINATIVE bank -> via entropy_fallback (spec §9 fixture)', () => {
+    // Every remaining question is fully non-diagnostic: zero channel-EIG, so
+    // the selector falls back to the question's own option entropy. Four
+    // options per question (bank invariant) — the Laplace constant 1.20 in
+    // optionProbabilities is spec-literal for 4-option items (§3).
+    const flat = contextFromBank({
+      meta: bank.meta,
+      bank: [
+        { id: 9101, cat: 'test', q: 'spent', opts: [{ t: 'a', w: { E: 1 }, b: ['social-initiation'] }, { t: 'b', w: {} }, { t: 'c', w: {} }, { t: 'd', w: {} }] },
+        {
+          id: 9102,
+          cat: 'test',
+          q: 'fallback A',
+          opts: [
+            { t: 'w', w: {}, b: ['non-diagnostic'] },
+            { t: 'x', w: {}, b: ['non-diagnostic'] },
+            { t: 'y', w: {}, b: ['non-diagnostic'] },
+            { t: 'z', w: {}, b: ['non-diagnostic'] },
+          ],
+        },
+        {
+          id: 9103,
+          cat: 'test',
+          q: 'fallback B',
+          opts: [
+            { t: 'w', w: {}, b: ['non-diagnostic'] },
+            { t: 'x', w: {}, b: ['non-diagnostic'] },
+            { t: 'y', w: {}, b: ['non-diagnostic'] },
+            { t: 'z', w: {}, b: ['non-diagnostic'] },
+          ],
+        },
+      ],
+    });
+    const chosen = [flat.bank.bank[0]];
+    const pick = selectNextAdaptive(flat, new Set(), chosen, [0], mulberry32(7));
+    expect(pick).not.toBeNull();
+    expect(pick!.via).toBe('entropy_fallback');
   });
 
   it('EIG is non-negative and zero for a fully unscored (prediction-only-style) question', () => {
@@ -482,5 +731,48 @@ describe('§2 reveal assembly end-to-end on the real bank', () => {
     expect(acc.scoredAnswers).toBe(0);
     expect(acc.constructLog).toHaveLength(0);
     expect(Object.values(acc.axisSums).every((v) => v === 0)).toBe(true);
+  });
+
+  it('undecided axis tipped by process evidence is LABELED, never silently flipped (§2)', () => {
+    // Two opposing E/I answers -> EI margin 0 (undecided). Whichever letter the
+    // leader carries, a tip label appears only when the raw pole disagrees;
+    // the invariant under test: labels carry both poles and a human sentence.
+    const q1 = bank.bank.find((b) => b.id === 1)!;
+    const q2 = bank.bank.find(
+      (b) => !b.duel && !b.prediction_only && b.id !== 1 &&
+        b.opts.some((o) => (o.w?.E ?? 0) > 0) && b.opts.some((o) => (o.w?.I ?? 0) > 0),
+    )!;
+    const both = [q1, q2];
+    const answers = [
+      q1.opts.findIndex((o) => (o.w?.I ?? 0) > 0),
+      q2.opts.findIndex((o) => (o.w?.E ?? 0) > 0),
+    ];
+    const acc = accumulate(both, identityDeliveries(both), answers, ctx);
+    const dist = candidateDistribution(acc, both, [], ctx);
+    const tipped = tippedAxes(dist, axisSkeleton(acc.axisSums));
+    expect(dist.probabilities.reduce((s, p) => s + p.probability, 0)).toBeCloseTo(1, 9);
+    for (const t of tipped) {
+      expect(t.selected).not.toBe(t.evidencePole);
+      expect(t.label.length).toBeGreaterThan(10);
+    }
+  });
+});
+
+describe('§4 NO CLUE = abstention (bank v10.2 marker)', () => {
+  it('no-clue options are detected and are never typing evidence', () => {
+    let count = 0;
+    for (const item of bank.bank) {
+      for (const o of item.opts) if (isAbstainOption(o)) count++;
+    }
+    expect(count).toBeGreaterThanOrEqual(39);
+    // Q67 carries two no-clue rows; picking one adds nothing but abstentions.
+    const q67 = bank.bank.find((b) => b.id === 67)!;
+    const noClue = q67.opts.findIndex(isAbstainOption);
+    const acc = accumulate([q67], identityDeliveries([q67]), [noClue], ctx);
+    expect(acc.abstentions).toBe(1);
+    expect(acc.scoredAnswers).toBe(0);
+    expect(Object.values(acc.dirSumsDuel).every((v) => v === 0)).toBe(true);
+    expect(Object.values(acc.dirSumsGeneral).every((v) => v === 0)).toBe(true);
+    expect(acc.axisSums).toEqual({ E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 });
   });
 });

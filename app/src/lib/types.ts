@@ -100,6 +100,12 @@ export interface V2AxisExtras {
   top_functions?: Array<{ fn: string; weight: number }>;
   /** the 4 signal constructs the route declared at build (spec §1 review 14). */
   route_targets?: string[];
+  /** Engine v2.7.5 §5/§6 — individual readings (PREDICTION GAPS). */
+  readings?: Array<{ player_id: string; type: string; top_probability: number; answered_count: number }>;
+  abstentions?: Array<{ player_id: string; abstention_count: number }>;
+  individual_confidence?: Array<{ player_id: string; band: string; value: number }>;
+  /** agreement controls NARRATION ONLY, never computation (spec §5). */
+  agreement?: 'aligned' | 'moderate' | 'divided';
 }
 
 export interface RoundResult {

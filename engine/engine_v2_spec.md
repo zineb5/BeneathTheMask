@@ -1,6 +1,6 @@
-# BENEATH THE MASK — ENGINE V2 SPEC (v2.4.7 APPROVED FOR CODING — 16 review rounds integrated, bank v9.9.2)
+# BENEATH THE MASK — ENGINE V2 SPEC (v2.7.5 VERIFIED, bank v10.2)
 
-Incorporates review rounds 12-15 (15 = final approval with two conditions, both integrated). Zero architecture changes since v2.4; successive
+Incorporates review rounds 12-15 + pilot-data amendment: individual readings (a vote is a full claim, not a probability). Zero architecture changes since v2.4; successive
 rounds added only implementation precision. FROZEN for coding.
 
 ## 0. Priorities
@@ -55,16 +55,73 @@ as "unlikely" (recoverable).
     raw = softmax(compatibility / 0.5)
     P_i = (raw_i + 0.05) / 1.20        (renormalized Laplace; assert sum == 1)
 EIG(Q) = H(current) - expected H after Q under these posteriors.
+SELECTION — THREE CHANNELS (review 17: duels have near-zero axis-EIG by design; the
+selector must value them through their own channel):
+    channel 1 (axis): axis-EIG over non-duel questions, P(option|type) as in section 3
+    channel 2 (duel) — MATHEMATICAL DEFINITION (reviews 19-22; review 22: stack
+    compatibility is the PRIOR, duel evidence is the UPDATE — otherwise P_duel is
+    uniform at round start and duel-EIG is zero exactly when the duel is most useful):
+        dirSums_duel[f] is function evidence, NOT a candidate score.
+        pair_score(T, f) = stack_position_weight(T, f) + beta * dirSums_duel[f]
+            stack_position_weight: dominant=2, auxiliary=1, tertiary=0.5, inferior=0
+            beta = 1 at pilot (calibrate later)
+            pair drawn from the current LEADING candidate alternatives
+        for duel d with function pair (f1, f2) e.g. (Ni, Ne), a SEPARATE,
+        duel-conditioned response distribution (the axis-only P(option|type) cannot
+        distinguish A from B when both read N — review 20):
+            fn(o) = the option's explicit duel function (A->Ni, B->Ne for duel Ni_Ne)
+            P_duel(o | T, d) = softmax( pair_score(T, fn(o)) / duel_tau ), duel_tau = 0.5
+            assert sum_o P_duel == 1
+        PREDICTIVE distribution over duel outcomes (mixture over candidates — review 22):
+            P_predictive(o | d) = sum over T in current_candidate_set of
+                                  P_current(T) * P_duel(o | T, d)
+        duel_uncertainty(d) = entropy(softmax(pair scores)) over the PAIR ONLY, [0, 1]
+        duel_EIG(d) = duel_uncertainty(current)
+                    - sum over o of
+                        P_predictive(o | d) * duel_uncertainty(pair_posterior_after_observing(o))
+        POSTERIOR UPDATE (implementation note + fixture, review 23):
+            pair_posterior_after_observing(o)[f]  ∝  prior[f] × P_duel(o | f, d)
+            normalized over the pair {f1, f2}
+        a Ni-dominant candidate predicts the Ni option even before any duel answer;
+        a settled pair (uncertainty near 0) yields ~zero duel-EIG and the selector moves on
+        AXIS ISOLATION (never broken): function evidence enters P_duel ONLY; P_axis stays
+        axes-only (section 3). Two distributions, two purposes.
+    channel 3 (family): >=1 family probe per round when the family's evidence is still weak
 COVERAGE PRIORITY: 1) <=14  2) >=2 independent opportunities/axis where possible
-3) no duplicate primary construct (0.5 discount)  4) max EIG  5) weakest axes first.
+3) no duplicate primary construct (0.5 discount)  4) max(channel-appropriate EIG)  5) weakest axes first.
 
 ## 4. Predictor scoring (the game)
 1 point per exact match. NO CLUE = abstention: 0 points, no group evidence, excluded
 from denominators, counted. Missing = 0. Tie -> head-to-head.
 
-## 5. Two profiles
-SELF: subject answers -> engine. GROUP per question: weighted vote mixture;
-all-abstain -> uniform prior + consensus 0; consensus = 1 - H/log2(K).
+## 5. Profiles — THREE, always computed (v2.6)
+A) SELF: X's answers -> engine -> X's distribution.
+B) INDIVIDUAL READINGS — explicit pipeline (review 18): each predictor is processed
+   through THE SAME scoring pipeline as X, with a SEPARATE accumulator set and route
+   state. Never one shared accumulator later attributed to individuals.
+       for predictor in active_predictors:
+           acc = new Accumulators()
+           for each answered typing question: acc.update(predictor.vote[q], delivery[q])
+           predictor.profile = score(acc)   # softmax distribution + confidence
+   Categorical votes (option B, no clue) map through the same w/fn evidence as X's picks.
+C) GROUP AGGREGATE: group_distribution[type] = mean of valid individual
+   posteriors, renormalized. NOT a vote-mixture, NOT a majority: with 2 predictors
+   reading ENFP and ISTJ, the aggregate honestly shows TWO peaks ("divided") —
+   no invented hybrid.
+AGREEMENT controls NARRATION ONLY:
+   aligned (top readings converge)  -> "According to the group: ENFP"
+   moderate                         -> thematic summary of the common read + the disagreement
+   divided                          -> named readings shown side by side:
+     "Friend A sees X as ENFP (9/12). Friend B sees X as ISTJ (6/12). That
+      disagreement is part of the reveal."
+VALID PREDICTOR (review 18) = >= 1 answered typing question AND not entirely
+abstaining. Stored per predictor: answered_count, abstention_count, individual_confidence.
+GROUP AGGREGATE = unweighted mean of valid individual posteriors, renormalized
+(reliability weighting is an optional later refinement; v1 stays auditable).
+The You/Group comparison table uses the GROUP AGGREGATE; best predictor is scored
+by match count as before. all-abstain -> uniform + consensus 0; consensus per
+question = 1 - H/log2(K). Individual profiles remain STORED even when group
+agreement is low — agreement changes narration, never computation.
 
 ## 6. Reveal
 Beat 1: leader + avatar + playful archetype + tagline + "Also suspected". LOW CONFIDENCE:
@@ -96,6 +153,10 @@ zero guards; route_targets locked before answers (attempting to change them mid-
 fails); weight 2 impossible uncalibrated; 4/7-3/7 -> mixed group profile; all-abstain ->
 uniform + consensus 0; exhausted duel bank -> entropy fallback; low confidence ->
 function pattern, not acronym; duel fn never double-counts.
+- Q67 Ni/Ne, Q69 Ti/Te, Q71 Fi/Fe, Q73 Si/Se: axis-EIG ~ 0 AND duel-EIG > 0 when
+  the pair is unsettled; settled pair -> duel-EIG ~ 0
+- sum(P_duel) == 1; AXIS ISOLATION fixture: function evidence contributes exactly 0
+  to P_axis(option|type) — two distributions, verified separate
 
 ## 10. Non-goals (review 12.4: terminology corrected)
 No irreversible elimination (decided-axis masking is temporary and recoverable).

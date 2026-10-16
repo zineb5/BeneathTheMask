@@ -249,6 +249,36 @@ export function RoundReveal({ isHost }: { isHost: boolean }) {
 
           {consensusLabel && <p className="accuracy">{consensusLabel}</p>}
 
+          {v2?.agreement && v2.agreement !== 'aligned' && (v2.readings ?? []).length > 1 && (
+            <div className="analyzer">
+              <p className="eyebrow">Prediction gaps — the room read you differently</p>
+              {v2.readings!.map((r) => {
+                const reader = players.find((p) => p.id === r.player_id);
+                return (
+                  <p key={r.player_id} className="analyzer-copy">
+                    <strong>{reader?.display_name ?? 'Someone'}</strong> sees {subject?.display_name ?? 'you'} as{' '}
+                    <strong>{r.type}</strong> ({r.answered_count}/12)
+                  </p>
+                );
+              })}
+              <p className="analyzer-copy">
+                That disagreement is part of the reveal — it proves nothing about who was right.
+              </p>
+            </div>
+          )}
+
+          {(v2?.abstentions ?? []).length > 0 && (
+            <p className="accuracy">
+              {(v2!.abstentions ?? [])
+                .map((a) => {
+                  const who = players.find((p) => p.id === a.player_id)?.display_name ?? 'Someone';
+                  return `${who} passed on ${a.abstention_count}`;
+                })
+                .join(' · ')}{' '}
+              — no-clue votes count, they just carry no evidence.
+            </p>
+          )}
+
           {results.subject_bonus === 1 && (
             <p className="best-predictor">
               The subject kept the mask on: +1 point.

@@ -137,8 +137,10 @@ const stepFwd = await call('subject-step', { room_id: room.id, player_id: round1
 check('subject-step moves the subject privately', stepFwd.status === 200 && stepFwd.data.idx === 1);
 const stepBack = await call('subject-step', { room_id: room.id, player_id: round1.subject_player_id, delta: -1 });
 check('subject-step can go back', stepBack.status === 200 && stepBack.data.idx === 0);
-const stepDenied = await call('subject-step', { room_id: room.id, player_id: pid(joined[0]), delta: 1 });
-check('subject-step forbidden for guessers', stepDenied.status === 403);
+// Round-1 subject is seeded per room — never assume joined[0] is a guesser.
+const guesser = joined.find((p) => pid(p) !== round1.subject_player_id);
+const stepDenied = await call('subject-step', { room_id: room.id, player_id: pid(guesser), delta: 1 });
+check('subject-step forbidden for guessers', stepDenied.status === 403, `status=${stepDenied.status} body=${JSON.stringify(stepDenied.data)}`);
 
 for (let q = 0; q < 12; q++) {
   const pick = (seed) => (seed + q) % 4;
@@ -204,7 +206,14 @@ check(
 check('per_player_correct covers the 4 predictors (subject joins when bonused)', Object.keys(result.per_player_correct).length >= players.length - 1);
 check('subject bonus rule consistent', (result.subject_type !== result.group_type) === (result.subject_bonus === 1));
 check('group bonus rule consistent', (result.subject_type === result.group_type) === (result.group_bonus === 1));
-check('group_accuracy total is 12', result.group_accuracy?.total === 12);
+// Spec §4: abstentions (no-clue picks) are EXCLUDED FROM DENOMINATORS, so
+// total counts only questions with a real subject answer and >= 1 real
+// prediction — <= 12, never more, and correct never exceeds total.
+check(
+  'group_accuracy denominators exclude abstentions (total <= 12, correct <= total)',
+  result.group_accuracy?.total >= 1 && result.group_accuracy?.total <= 12 && result.group_accuracy?.correct <= result.group_accuracy?.total,
+  JSON.stringify(result.group_accuracy),
+);
 check('analyzer is an array', Array.isArray(result.analyzer));
 const again = await call('compute-reveal', { room_id: room.id, player_id: c1 });
 check('idempotent re-call', again.status === 200 && again.data.result.round_id === result.round_id);

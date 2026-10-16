@@ -1,7 +1,8 @@
-// Beneath the Mask — ENGINE V2 (spec v2.4.7 FROZEN, bank v9.9.2).
+// Beneath the Mask — ENGINE V2 (spec v2.7.5 FROZEN, bank v10.2).
 //
-// PR1 = scoring (spec §1, §2, §5, §7). PR2 = adaptive selection (spec §3).
-// Pure TypeScript: no Deno/node APIs. Consumed by edge functions (Deno) and vitest (node).
+// PR1 = scoring (spec §1, §2, §5, §7). PR2 = adaptive selection (spec §3,
+// three channels). Pure TypeScript: no Deno/node APIs. Consumed by edge
+// functions (Deno) and vitest (node).
 //
 // DEVIATION RULE (owner doctrine): any behavior here that contradicts
 // engine_v2_spec.md is a bug in THIS file. The spec is never "fixed" by
@@ -41,6 +42,50 @@
 //      sequence, which weakly reflects the subject's earlier axis evidence.
 //      EIG favors separating questions on UNCERTAIN axes, which limits the
 //      leak; pilot protocol should watch group-accuracy inflation.
+//  D9. NO CLUE (spec §4/§5): an option whose only construct is
+//      'non-diagnostic' (empty w, empty fn) is an abstention. It accrues no
+//      axis/fn evidence, counts toward abstention_count, and is excluded from
+//      every denominator. Categorical votes on real options map through the
+//      same w/fn pipeline as the subject's picks (spec §5 review 18) — the
+//      pipeline needs no special case because a no-clue option carries no
+//      evidence to map.
+//  D10. Pair posterior (spec §3 review 23): P_duel(o | f, d) for f in the pair
+//      treats f as the dominant function of a hypothetical f-led stack: its
+//      pair partner weighs 1 (auxiliary level), non-tagged options weigh 0,
+//      plus beta * dirSums_duel[fn(o)]. The pair PRIOR is the candidate
+//      mixture prior[f] ∝ Σ_T P_current(T) * stack_position_weight(T, f)
+//      (review 22: stack compatibility IS the prior, duel evidence the
+//      update). The pair's CURRENT UNCERTAINTY (spec §3 "entropy(softmax(pair
+//      scores)) over the PAIR ONLY") runs on pairBelief — the same mixture
+//      with pairScore, i.e. INCLUDING dirSums_duel: that is what makes a
+//      settled pair yield ~zero duel-EIG. duel_uncertainty is Shannon entropy
+//      ([0,1], log2(2) = 1). duel_EIG = u(belief) - Σ_o P_predictive(o) *
+//      u(posterior_o).
+//  D15. No-clue duel options are abstentions inside the duel channel too
+//      (spec §4): they are excluded from P_predictive's normalization and
+//      contribute zero expected uncertainty — an abstention is not evidence
+//      of an unsettled pair.
+//  D11. The mission statement mentions an "opening rotation (8 scenes)"; the
+//      spec v2.7.5 §3 contains NO opening-rotation rule (verified by full-text
+//      search). Per the deviation rule nothing was invented: openings rotate
+//      naturally through the seeded rng tie-breaking in the selector. REPORTED
+//      to the owner as a spec gap.
+//  D12. Channel 3 "family evidence still weak" (spec §3): operationalized as
+//      no family-probe answer in dirSums_duel/General supporting one family
+//      pair over the other — concretely: the round has not yet asked a family
+//      probe, or the family probes asked so far left both families of the
+//      probe within a margin < DECIDED_MARGIN. While weak and no family probe
+//      is in the route yet, the strongest available family probe (highest
+//      duel-style EIG over its NT/NF/ST/SF pair) is preferred.
+//  D13. Coverage floor softened (spec §3 "where possible"): selectAdaptiveRoute
+//      no longer throws on an unmet MIN_AXIS_TOTAL floor; it returns the best
+//      route it could build plus floorWarnings listing the deficient axes.
+//  D14. Channel 2 applies to FUNCTION duels only (pair of Directions, e.g.
+//      ["Ni","Ne"]). Family probes declare duel:["NT","NF","ST","SF"] —
+//      temperament families, not a function pair — so they stay on channel 1
+//      (axis-EIG): their family signal lives in w. Consequently D12's
+//      "duel-style EIG" for family probes is computed as axis-EIG restricted
+//      to the family-probe pool.
 
 import {
   AXES,
@@ -49,6 +94,7 @@ import {
   type BankQuestion,
   type Direction,
   type FnConfidence,
+  isAbstainOption,
   type Letter,
   type ShuffledDelivery,
 } from './engine.ts';
@@ -191,6 +237,8 @@ export interface V2Accumulators {
   duelLog: DuelLogEntry[];
   /** answered questions counted toward typing (prediction_only excluded). */
   scoredAnswers: number;
+  /** NO-CLUE picks (spec §4/D9): counted, never evidence. */
+  abstentions: number;
 }
 
 const emptyAccumulators = (): V2Accumulators => ({
@@ -200,6 +248,7 @@ const emptyAccumulators = (): V2Accumulators => ({
   constructLog: [],
   duelLog: [],
   scoredAnswers: 0,
+  abstentions: 0,
 });
 
 function isDuel(q: BankQuestion): boolean {
@@ -253,25 +302,19 @@ export function accumulate(
     if (original === undefined) continue;
     const o = q.opts[original];
     if (!o) continue;
+    if (isAbstainOption(o)) {
+      acc.abstentions += weight; // NO CLUE: counted, never evidence (spec §4/D9)
+      continue;
+    }
     accumulateOption(acc, q, o, ctx, weight);
     acc.scoredAnswers += weight;
   }
   return acc;
 }
 
-/** Mean-of-mixture accumulators over many answer sets (spec §5 group profile). */
-export function accumulateMixture(
-  questions: BankQuestion[],
-  deliveries: ShuffledDelivery[],
-  answersList: Array<Array<number | null | undefined>>,
-  ctx: EngineV2Context,
-): V2Accumulators {
-  const total = emptyAccumulators();
-  const k = answersList.length;
-  if (k === 0) return total;
-  for (const answers of answersList) accumulate(questions, deliveries, answers, ctx, 1 / k, total);
-  return total;
-}
+/** Mean-of-mixture accumulators over many answer sets — REMOVED in spec v2.7.5
+ * (review 18 / v2.6): the group profile is no longer a vote mixture. The group
+ * aggregate is the unweighted MEAN of valid individual posteriors (§5). */
 
 // ---------------------------------------------------------------------------
 // Spec §2 — axis skeleton, candidate set, fits, distribution
@@ -591,26 +634,116 @@ export function tippedAxes(dist: CandidateDistribution, skeleton: Record<Axis, A
 }
 
 // ---------------------------------------------------------------------------
-// Spec §5 — group vote mixture + consensus
+// Spec §5 (v2.6, review 18) — THREE profiles, always computed.
+//   A) SELF: the subject through the scoring pipeline (revealFor below).
+//   B) INDIVIDUAL READINGS: each predictor through THE SAME pipeline with a
+//      SEPARATE accumulator set and route state — a vote is a full claim,
+//      not a probability (pilot-data amendment).
+//   C) GROUP AGGREGATE: unweighted mean of VALID individual posteriors,
+//      renormalized. NOT a vote-mixture, NOT a majority: two predictors
+//      reading ENFP and ISTJ produce an aggregate with TWO peaks.
 // ---------------------------------------------------------------------------
 
-export interface GroupMixture {
-  accumulators: V2Accumulators;
-  /** per-question consensus 1 - H/log2(K); 0 when nobody voted (spec §5). */
-  consensus: number[];
-  overallConsensus: number;
-  /** votes counted per question (abstentions excluded from denominators). */
-  votesPerQuestion: number[];
+export interface PredictorReading {
+  playerId: string;
+  /** VALID PREDICTOR (spec §5 review 18): >= 1 answered typing question AND
+   *  not entirely abstaining. Both conditions reduce to scoredAnswers >= 1
+   *  after D9 abstention filtering. */
+  valid: boolean;
+  answeredCount: number;
+  abstentionCount: number;
+  individualConfidence: ConfidenceResult | null;
+  /** individual posterior over the candidate set (softmax distribution). */
+  profile: EngineV2Reveal['subject'] | null;
 }
 
-export function groupMixture(
+/**
+ * Individual readings: run every predictor's answer set through the same
+ * scoring pipeline as the subject, each with its own accumulators.
+ */
+export function individualReadings(
   questions: BankQuestion[],
   deliveries: ShuffledDelivery[],
   predictions: Map<string, Array<number | null | undefined>>,
+  routeTargetsByAxis: Record<Axis, string>,
   ctx: EngineV2Context,
-): GroupMixture {
-  const answersList = [...predictions.values()];
-  const accumulators = accumulateMixture(questions, deliveries, answersList, ctx);
+): PredictorReading[] {
+  const out: PredictorReading[] = [];
+  for (const [playerId, answers] of predictions) {
+    const acc = accumulate(questions, deliveries, answers, ctx);
+    const answeredCount = acc.scoredAnswers;
+    const abstentionCount = acc.abstentions;
+    const valid = answeredCount >= 1;
+    out.push({
+      playerId,
+      valid,
+      answeredCount,
+      abstentionCount,
+      individualConfidence: valid ? revealFor(questions, deliveries, answers, routeTargetsByAxis, ctx).confidence : null,
+      profile: valid ? revealFor(questions, deliveries, answers, routeTargetsByAxis, ctx) : null,
+    });
+  }
+  return out;
+}
+
+export interface GroupAggregate {
+  /** unweighted mean of valid individual posteriors, renormalized (spec §5). */
+  probabilities: TypeProbability[];
+  /** all predictors abstained on every typing question -> uniform + flag. */
+  uniform: boolean;
+  validCount: number;
+  /** agreement level — NARRATION ONLY, never computation (spec §5). */
+  agreement: 'aligned' | 'moderate' | 'divided';
+  /** split-read names for the 'divided' narration (top reading per valid predictor). */
+  readings: Array<{ playerId: string; type: string; topProbability: number; answeredCount: number }>;
+}
+
+export function groupAggregate(readings: PredictorReading[], ctx: EngineV2Context): GroupAggregate {
+  const valid = readings.filter((r) => r.valid && r.profile);
+  const allTypes = ALL_TYPES(ctx);
+  if (valid.length === 0) {
+    return {
+      probabilities: allTypes.map((type) => ({ type, probability: 1 / 16 })),
+      uniform: true,
+      validCount: 0,
+      agreement: 'divided',
+      readings: [],
+    };
+  }
+  const mean = allTypes.map((type) => {
+    const sum = valid.reduce((s, r) => s + (r.profile!.probabilities.find((p) => p.type === type)?.probability ?? 0), 0);
+    return { type, probability: sum / valid.length };
+  });
+  const total = mean.reduce((s, p) => s + p.probability, 0);
+  const probabilities = mean
+    .map((p) => ({ type: p.type, probability: p.probability / total }))
+    .sort((a, b) => b.probability - a.probability || a.type.localeCompare(b.type));
+
+  // Agreement controls narration only (spec §5): aligned when the valid
+  // readings' leaders converge, divided when they don't, moderate between.
+  const tops = valid.map((r) => ({ playerId: r.playerId, leader: r.profile!.type, p: r.profile!.probabilities[0]?.probability ?? 0, answeredCount: r.answeredCount }));
+  const distinctLeaders = new Set(tops.map((t) => t.leader)).size;
+  const agreement: GroupAggregate['agreement'] = distinctLeaders === 1 ? 'aligned' : distinctLeaders === valid.length ? 'divided' : 'moderate';
+  const readingsSummary = tops
+    .map((t) => ({ playerId: t.playerId, type: t.leader, topProbability: t.p, answeredCount: t.answeredCount }))
+    .sort((a, b) => b.topProbability - a.topProbability || a.playerId.localeCompare(b.playerId));
+  return { probabilities, uniform: false, validCount: valid.length, agreement, readings: readingsSummary };
+}
+
+export interface ConsensusProfile {
+  /** per-question consensus 1 - H/log2(K); 0 when nobody voted (spec §5). */
+  consensus: number[];
+  overallConsensus: number;
+  /** real votes counted per question (abstentions excluded from denominators). */
+  votesPerQuestion: number[];
+}
+
+/** Per-question consensus, abstentions excluded from denominators (spec §4/§5). */
+export function consensusPerQuestion(
+  questions: BankQuestion[],
+  deliveries: ShuffledDelivery[],
+  predictions: Map<string, Array<number | null | undefined>>,
+): ConsensusProfile {
   const consensus: number[] = [];
   const votesPerQuestion: number[] = [];
   for (let i = 0; i < questions.length; i++) {
@@ -618,14 +751,16 @@ export function groupMixture(
     let total = 0;
     for (const ans of predictions.values()) {
       const chosen = ans[i];
-      if (typeof chosen === 'number' && deliveries[i]?.options[chosen]) {
-        counts[chosen]++;
-        total++;
-      }
+      const original = typeof chosen === 'number' ? deliveries[i]?.options[chosen]?.i : undefined;
+      if (original === undefined) continue;
+      const o = questions[i].opts[original];
+      if (!o || isAbstainOption(o)) continue; // NO CLUE: excluded (spec §4)
+      counts[chosen]++;
+      total++;
     }
     votesPerQuestion.push(total);
     if (total === 0) {
-      consensus.push(0); // all-abstain: uniform prior + consensus 0 (spec §5)
+      consensus.push(0); // all-abstain: consensus 0 (spec §5)
       continue;
     }
     const p = counts.map((c) => c / total);
@@ -633,7 +768,7 @@ export function groupMixture(
     consensus.push(1 - h / Math.log2(counts.length));
   }
   const overallConsensus = consensus.length > 0 ? consensus.reduce((a, b) => a + b, 0) / consensus.length : 0;
-  return { accumulators, consensus, overallConsensus, votesPerQuestion };
+  return { consensus, overallConsensus, votesPerQuestion };
 }
 
 // ---------------------------------------------------------------------------
@@ -683,6 +818,170 @@ export function expectedInformationGain(
   return hCurrent - expected;
 }
 
+// ---------------------------------------------------------------------------
+// Spec §3 channel 2 — duel mathematics (reviews 19-23).
+// AXIS ISOLATION (never broken): function evidence enters P_duel ONLY;
+// P_axis (optionProbabilities above) stays axes-only. Two distributions,
+// two purposes. Duel-EIG exists because duels have near-zero axis-EIG by
+// design (review 17) — the selector values them through THIS channel.
+// ---------------------------------------------------------------------------
+
+/** Duel response-softmax temperature (spec §3). */
+export const DUEL_TAU = 0.5;
+/** Duel evidence weight on the pair score (spec §3: beta = 1 at pilot). */
+export const PAIR_BETA = 1;
+
+const STACK_POSITION_WEIGHT = [2, 1, 0.5, 0]; // dominant, auxiliary, tertiary, inferior
+
+/** stack_position_weight(T, f): dominant=2, auxiliary=1, tertiary=0.5, inferior=0. */
+export function stackPositionWeight(type: string, fn: Direction, ctx: EngineV2Context): number {
+  const pos = ctx.stacks[type]?.indexOf(fn) ?? -1;
+  return pos >= 0 ? STACK_POSITION_WEIGHT[pos] : 0;
+}
+
+/** pair_score(T, f) = stack_position_weight(T, f) + beta * dirSums_duel[f] (spec §3). */
+export function pairScore(type: string, fn: Direction, acc: V2Accumulators, ctx: EngineV2Context): number {
+  return stackPositionWeight(type, fn, ctx) + PAIR_BETA * (acc.dirSumsDuel[fn] ?? 0);
+}
+
+/** The option's explicit duel function (A->Ni, B->Ne for duel Ni_Ne), if any. */
+export function duelOptionFunction(o: BankQuestion['opts'][number], pair: string[]): Direction | null {
+  for (const fn of Object.keys(o.fn ?? {})) {
+    if (pair.includes(fn)) return fn as Direction;
+  }
+  return null;
+}
+
+/**
+ * P_duel(o | T, d) = softmax( pair_score(T, fn(o)) / duel_tau ) (spec §3).
+ * Options with no duel function (no-clue slots) score 0 for every type — they
+ * are equally compatible with all candidates and carry no discriminating
+ * evidence (D9). Asserts the distribution sums to 1.
+ */
+export function duelOptionProbs(question: BankQuestion, type: string, acc: V2Accumulators, ctx: EngineV2Context): number[] {
+  const pair = question.duel ?? [];
+  const scores = question.opts.map((o) => {
+    const fn = duelOptionFunction(o, pair);
+    return fn ? pairScore(type, fn, acc, ctx) : 0;
+  });
+  const p = stableSoftmax(scores, DUEL_TAU);
+  const total = p.reduce((a, b) => a + b, 0);
+  if (Math.abs(total - 1) > 1e-9) throw new Error(`P_duel(Q${question.id}|${type}) sums to ${total}`);
+  return p;
+}
+
+/**
+ * P_predictive(o | d) = Σ_T P_current(T) * P_duel(o | T, d) (spec §3 review 22).
+ * D15: no-clue options are ABSTENTIONS (spec §4) — they carry no pair evidence
+ * and are excluded from the predictive normalization, exactly as they are
+ * excluded from every other denominator.
+ */
+export function duelPredictive(question: BankQuestion, current: TypeProbability[], acc: V2Accumulators, ctx: EngineV2Context): number[] {
+  const pair = question.duel ?? [];
+  const mix = question.opts.map((_, i) => current.reduce((sum, t) => sum + t.probability * duelOptionProbs(question, t.type, acc, ctx)[i], 0));
+  const abstains = question.opts.map((o) => duelOptionFunction(o, pair) === null);
+  const total = mix.reduce((sum, m, i) => (abstains[i] ? sum : sum + m), 0);
+  return mix.map((m, i) => (abstains[i] ? 0 : total > 0 ? m / total : 0));
+}
+
+/**
+ * Pair PRIOR (D10): prior[f] ∝ Σ_T P_current(T) * stack_position_weight(T, f),
+ * normalized over the duel pair {f1, f2}. Stack compatibility is the prior,
+ * duel evidence is the update (review 22) — otherwise P_duel is uniform at
+ * round start and duel-EIG is zero exactly when the duel is most useful.
+ */
+export function pairPrior(question: BankQuestion, current: TypeProbability[], ctx: EngineV2Context): [number, number] {
+  const [f1, f2] = (question.duel ?? []) as [Direction, Direction];
+  const s1 = current.reduce((sum, t) => sum + t.probability * stackPositionWeight(t.type, f1, ctx), 0);
+  const s2 = current.reduce((sum, t) => sum + t.probability * stackPositionWeight(t.type, f2, ctx), 0);
+  const total = s1 + s2;
+  return total > 0 ? [s1 / total, s2 / total] : [0.5, 0.5];
+}
+
+/**
+ * The pair's CURRENT belief for uncertainty purposes (spec §3:
+ * "duel_uncertainty(d) = entropy(softmax(pair scores)) over the PAIR ONLY").
+ * pair scores include the accumulated duel evidence — that is what makes a
+ * settled pair yield ~zero duel-EIG: once dirSums_duel settles the pair, the
+ * current uncertainty is already near 0 and the selector moves on.
+ */
+export function pairBelief(question: BankQuestion, current: TypeProbability[], acc: V2Accumulators, ctx: EngineV2Context): [number, number] {
+  const [f1, f2] = (question.duel ?? []) as [Direction, Direction];
+  const s1 = current.reduce((sum, t) => sum + t.probability * pairScore(t.type, f1, acc, ctx), 0);
+  const s2 = current.reduce((sum, t) => sum + t.probability * pairScore(t.type, f2, acc, ctx), 0);
+  const total = s1 + s2;
+  return total > 0 ? [s1 / total, s2 / total] : [0.5, 0.5];
+}
+
+/**
+ * Posterior update (spec §3 review 23 fixture): pair_posterior(o)[f] ∝
+ * prior[f] × P_duel(o | f, d), normalized over the pair. P_duel(o | f, d)
+ * treats f as the dominant function of a hypothetical f-led stack (D10).
+ */
+export function pairPosteriorAfterObserving(
+  question: BankQuestion,
+  optionIdx: number,
+  prior: [number, number],
+  acc: V2Accumulators,
+  ctx: EngineV2Context,
+): [number, number] {
+  const [f1, f2] = (question.duel ?? []) as [Direction, Direction];
+  const fn = duelOptionFunction(question.opts[optionIdx] ?? {}, question.duel ?? []);
+  // Likelihood of this option if the subject's function were f (D10): the
+  // option's own function at dominant weight 2, its pair partner at auxiliary
+  // weight 1, plus the accumulated duel evidence on that function.
+  const like = (f: Direction): number => {
+    if (!fn) return 1; // no-clue option: uninformative, posterior unchanged
+    const position = fn === f ? 2 : fn === (f === f1 ? f2 : f1) ? 1 : 0;
+    return Math.exp((position + PAIR_BETA * (acc.dirSumsDuel[fn] ?? 0)) / DUEL_TAU);
+  };
+  const l1 = like(f1);
+  const l2 = like(f2);
+  const num1 = prior[0] * l1;
+  const num2 = prior[1] * l2;
+  const total = num1 + num2;
+  return total > 0 ? [num1 / total, num2 / total] : prior;
+}
+
+/** entropyBits of a 2-point distribution lies in [0,1] (log2(2) = 1). */
+function pairEntropy(pairDist: [number, number]): number {
+  const h = -pairDist.reduce((sum, p) => (p > 0 ? sum + p * Math.log2(p) : sum), 0);
+  return Math.min(1, Math.max(0, h));
+}
+
+/**
+ * duel_EIG(d) = u(current) - Σ_o P_predictive(o | d) * u(pair_posterior(o))
+ * (spec §3), where u(current) runs on the pair belief INCLUDING accumulated
+ * duel evidence — a settled pair (uncertainty near 0) yields ~zero duel-EIG
+ * and the selector moves on. No-clue options are abstentions: excluded from
+ * the predictive sum (D15) and uninformative as observations.
+ */
+export function duelEIG(question: BankQuestion, current: TypeProbability[], acc: V2Accumulators, ctx: EngineV2Context): number {
+  const prior = pairPrior(question, current, ctx);
+  const predictive = duelPredictive(question, current, acc, ctx);
+  let expected = 0;
+  for (let i = 0; i < question.opts.length; i++) {
+    if (predictive[i] <= 0) continue; // abstention slots carry no pair evidence
+    expected += predictive[i] * pairEntropy(pairPosteriorAfterObserving(question, i, prior, acc, ctx));
+  }
+  return pairEntropy(pairBelief(question, current, acc, ctx)) - expected;
+}
+
+function isFunctionDuel(q: BankQuestion): boolean {
+  return isDuel(q) && (q.duel ?? []).every((f) => DIRECTIONS.includes(f as Direction));
+}
+
+/**
+ * Channel-appropriate EIG (spec §3 review 17): FUNCTION duels go through
+ * duel-EIG (their axis-EIG is ~0 by design); everything else — everyday
+ * questions AND family probes — through axis-EIG (D14: family probes carry
+ * their family signal in w, their `duel` field names temperament families,
+ * not a function pair, so the duel channel does not apply to them).
+ */
+export function channelEIG(question: BankQuestion, current: TypeProbability[], acc: V2Accumulators, ctx: EngineV2Context): number {
+  return isFunctionDuel(question) ? duelEIG(question, current, acc, ctx) : expectedInformationGain(question, current, ctx);
+}
+
 /** Effective per-axis weight a question can contribute (coverage bookkeeping). */
 export function axisOpportunity(q: BankQuestion, axis: Axis): number {
   const [p1, p2] = POLES[axis];
@@ -705,7 +1004,7 @@ export interface AdaptivePickResult {
   /** true when the session used-set was reset (bank could not fill the route otherwise). */
   resetUsed: boolean;
   /** coverage priority applied at this step, for logs/tests. */
-  via: 'needed_axis' | 'max_eig' | 'entropy_fallback';
+  via: 'family_probe' | 'needed_axis' | 'max_eig' | 'entropy_fallback';
 }
 
 /**
@@ -755,7 +1054,7 @@ export function selectNextAdaptive(
   const chosenConstructs = new Set(chosenSoFar.map(primaryConstruct));
 
   const scored = (q: BankQuestion): number => {
-    let eig = expectedInformationGain(q, current, ctx);
+    let eig = channelEIG(q, current, acc, ctx); // channel 1 vs channel 2 (spec §3 review 17)
     if (chosenConstructs.has(primaryConstruct(q))) eig *= 0.5; // priority 3
     return eig;
   };
@@ -763,7 +1062,12 @@ export function selectNextAdaptive(
   const weakestFirst = (axes: Axis[]): Axis =>
     [...axes].sort((a, b) => axisLoad[a] - axisLoad[b] || AXES.indexOf(a) - AXES.indexOf(b))[0];
 
-  const neededAxes = AXES.filter((axis) => opportunities[axis] < MIN_OPPORTUNITIES_PER_AXIS);
+  // Priority 2 (+5, weakest first): serve axes that are under-covered EITHER
+  // in independent opportunities OR in effective axis weight (the bank's
+  // declared floor, best-effort per "where possible").
+  const neededAxes = AXES.filter(
+    (axis) => opportunities[axis] < MIN_OPPORTUNITIES_PER_AXIS || axisLoad[axis] < MIN_AXIS_TOTAL,
+  );
   const pickFrom = (candidates: BankQuestion[]): BankQuestion | null => {
     if (candidates.length === 0) return null;
     const order = candidates.slice();
@@ -774,6 +1078,17 @@ export function selectNextAdaptive(
     return order.sort((a, b) => scored(b) - scored(a) || 0)[0];
   };
 
+  // Channel 3 (spec §3): >=1 family probe per round while the family's
+  // evidence is still weak (D12). Weak = no family probe answered with real
+  // evidence yet — family probes accrue explicit fn pairs (Ni+Ti = NT etc.)
+  // to dirSums_duel, so a real NT read shows up as dirSums_duel support.
+  const familyProbeInRoute = chosenSoFar.some((q) => q.layer === 'family_probe');
+  if (!familyProbeInRoute && acc.duelLog.length === 0) {
+    const probes = pool.filter((q) => q.layer === 'family_probe');
+    const pick = pickFrom(probes); // D14: axis-EIG within the probe pool
+    if (pick) return { question: pick, resetUsed, via: 'family_probe' };
+  }
+
   // Priority 2 (where possible): serve the weakest under-covered axis first.
   for (const axis of neededAxes) {
     const covering = pool.filter((q) => axisOpportunity(q, axis) > 0);
@@ -781,9 +1096,16 @@ export function selectNextAdaptive(
     if (pick) return { question: pick, resetUsed, via: 'needed_axis' };
   }
 
-  // Priority 4: max EIG over the whole pool.
+  // Priority 4: max channel-EIG over the whole pool. When NOTHING carries
+  // information anymore (e.g. the duel bank is exhausted and every remaining
+  // question is non-diagnostic for the current candidate set), fall back to
+  // the question's own option entropy instead of a meaningless argmax
+  // (spec §9 fixture: exhausted duel bank -> entropy fallback).
   const best = pickFrom(pool);
-  if (best) return { question: best, resetUsed, via: 'max_eig' };
+  if (best) {
+    const bestScore = scored(best);
+    if (bestScore > 1e-12) return { question: best, resetUsed, via: 'max_eig' };
+  }
 
   // Entropy fallback: bank exhausted for rules 2-4 — take the most uncertain
   // remaining question (its own option-entropy), ignoring coverage needs.
@@ -801,14 +1123,15 @@ export function selectNextAdaptive(
 
 /**
  * Full adaptive route (PR2) — convenience for tests and non-lazy consumers.
- * Guarantees the §3 floor: every axis carries >= MIN_AXIS_TOTAL effective weight.
+ * The §3 floor is a target, not a wall (D13, "where possible"): a deficient
+ * axis is reported in floorWarnings instead of throwing.
  */
 export function selectAdaptiveRoute(
   ctx: EngineV2Context,
   usedIds: ReadonlySet<number>,
   rng: () => number,
   count = ROUTE_LENGTH,
-): { questions: BankQuestion[]; resetUsed: boolean } {
+): { questions: BankQuestion[]; resetUsed: boolean; floorWarnings: Axis[] } {
   const chosen: BankQuestion[] = [];
   const answers: Array<number | null> = [];
   let resetUsed = false;
@@ -821,12 +1144,8 @@ export function selectAdaptiveRoute(
   }
   const totals: Record<Axis, number> = { EI: 0, SN: 0, TF: 0, JP: 0 };
   for (const q of chosen) for (const axis of AXES) totals[axis] += axisOpportunity(q, axis);
-  for (const axis of AXES) {
-    if (totals[axis] < MIN_AXIS_TOTAL) {
-      throw new Error(`adaptive route failed the coverage floor: axis ${axis} total ${totals[axis]} < ${MIN_AXIS_TOTAL}`);
-    }
-  }
-  return { questions: chosen, resetUsed };
+  const floorWarnings = AXES.filter((axis) => totals[axis] < MIN_AXIS_TOTAL);
+  return { questions: chosen, resetUsed, floorWarnings };
 }
 
 // ---------------------------------------------------------------------------

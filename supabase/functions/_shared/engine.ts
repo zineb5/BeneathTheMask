@@ -63,6 +63,17 @@ const POLES: Record<Axis, [Letter, Letter]> = {
 // the first pole wins (documented; bank v6 narrowing makes exact ties rare).
 const TIE_DEFAULT: Record<Axis, Letter> = { EI: 'E', SN: 'S', TF: 'T', JP: 'J' };
 
+/**
+ * NO CLUE = abstention (spec §4): an option whose only construct is
+ * 'non-diagnostic' carries no axis weights and no function evidence. Picking
+ * it = 0 points, no group evidence, excluded from denominators, counted.
+ */
+export function isAbstainOption(o: BankOption): boolean {
+  return (o.b ?? []).includes('non-diagnostic') &&
+    Object.keys(o.w ?? {}).length === 0 &&
+    Object.keys(o.fn ?? {}).length === 0;
+}
+
 /** Deterministic seeded PRNG (mulberry32). */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -389,12 +400,16 @@ export function scoreRound(input: ScoreInput): ScoreResult {
 
   const subjectOrig: Array<number | null> = deliveries.map((d, idx) => origOf(d, subjectAnswers[idx]));
 
-  // Majority vote per question: plurality over predictors; ties -> smallest orig index.
+  // Majority vote per question: plurality over predictors, NO-CLUE votes are
+  // abstentions — excluded from the plurality (spec §4). Ties -> smallest orig
+  // index. null when nobody voted a real option.
   const majorityOrig: Array<number | null> = deliveries.map((_, idx) => {
     const counts = new Map<number, number>();
     for (const ans of predictions.values()) {
       const o = origOf(deliveries[idx], ans[idx]);
-      if (o !== null) counts.set(o, (counts.get(o) ?? 0) + 1);
+      if (o !== null && !isAbstainOption(questions[idx].opts[o])) {
+        counts.set(o, (counts.get(o) ?? 0) + 1);
+      }
     }
     if (counts.size === 0) return null;
     let best: number | null = null;
@@ -428,7 +443,11 @@ export function scoreRound(input: ScoreInput): ScoreResult {
   for (const [pid, ans] of predictions) {
     let c = 0;
     for (let idx = 0; idx < n; idx++) {
-      if (origOf(deliveries[idx], ans[idx]) !== null && origOf(deliveries[idx], ans[idx]) === subjectOrig[idx]) c++;
+      // NO CLUE = abstention (spec §4): 0 points, never an exact match, even
+      // when the subject also abstained on that question.
+      const pOrig = origOf(deliveries[idx], ans[idx]);
+      if (pOrig === null || isAbstainOption(questions[idx].opts[pOrig])) continue;
+      if (pOrig === subjectOrig[idx]) c++;
     }
     perPlayerCorrect[pid] = c;
   }
@@ -458,8 +477,22 @@ export function scoreRound(input: ScoreInput): ScoreResult {
   }
   const bestPredictor = tied[0] ?? null;
 
+  // Group accuracy: abstentions are EXCLUDED FROM DENOMINATORS (spec §4). A
+  // question counts only when the subject gave a real answer and at least one
+  // predictor gave a real (non-no-clue) prediction.
   let correct = 0;
-  for (let idx = 0; idx < n; idx++) if (majorityOrig[idx] !== null && majorityOrig[idx] === subjectOrig[idx]) correct++;
+  let total = 0;
+  for (let idx = 0; idx < n; idx++) {
+    const sOrig = subjectOrig[idx];
+    if (sOrig === null || isAbstainOption(questions[idx].opts[sOrig])) continue;
+    const hasRealPrediction = [...predictions.values()].some((ans) => {
+      const o = origOf(deliveries[idx], ans[idx]);
+      return o !== null && !isAbstainOption(questions[idx].opts[o]);
+    });
+    if (!hasRealPrediction) continue;
+    total++;
+    if (majorityOrig[idx] !== null && majorityOrig[idx] === sOrig) correct++;
+  }
 
   return {
     subjectType: typeFromSums(subjectSums),
@@ -467,7 +500,7 @@ export function scoreRound(input: ScoreInput): ScoreResult {
     perPlayerCorrect,
     bestPredictor,
     majorityOrig,
-    groupAccuracy: { correct, total: n },
+    groupAccuracy: { correct, total },
     subjectAxisSums: axisSums(subjectSums),
     groupAxisSums: axisSums(groupSums),
   };

@@ -1,7 +1,7 @@
 {
  "meta": {
   "game": "Beneath the Mask - MBTI prediction party game",
-  "version": "9.9.2",
+  "version": "10.2",
   "lang": "en",
   "style": "roast",
   "authoring_rule": "Every option is a miniature characterization of X: observational humour + affectionate roasting + plausible behavior. The joke is SURFACE ONLY. Weights are assigned from the underlying behavior the option describes, never from how funny or serious the option reads. funny != P, serious != J.",
@@ -19,7 +19,7 @@
    "winner": "most total correct predictions across all rounds",
    "tie_break": "most best-predictor badges, then head-to-head correct answers"
   },
-  "type_derivation": "Engine v2.4.7 (engine_v2_spec.md): normalized axis_fit (pole differences, sensitivity multipliers) + function_fit (0.25, derived via stacks) + duel_fit (0.10), softmax with tau; axis margins, confidence bands, closest alternatives stored per result. The bank stores EVIDENCE (w/fn/b); it does not compute types.",
+  "type_derivation": "Engine v2.6 (engine_v2_spec.md): normalized axis_fit (pole differences, sensitivity multipliers) + function_fit (0.25, derived via stacks) + duel_fit (0.10), softmax with tau; axis margins, confidence bands, closest alternatives stored per result. The bank stores EVIDENCE (w/fn/b); it does not compute types.",
   "functions": {
    "role": "SECONDARY RANKING LAYER (0.25 of candidate score via stacks). Axes remain PRIMARY (0.65); duels 0.10. Axis guard: a decided letter (axis margin > threshold) is never flipped by function or duel evidence — those reorder candidates WITHIN the axis skeleton only. Functions explain and narrow; they do not overrule the axes.",
    "anti_circularity": "options carry behavioral constructs only. Function evidence is DERIVED from constructs via this table, never assigned directly to an option. An option therefore can never be its own evidence for a function.",
@@ -312,7 +312,7 @@
    "construct_vs_motive": "a behavioral construct is NOT a psychological motive. Example: 'X asks five people before buying' OBSERVES external-input-seeking. It does NOT observe 'X trusts others', 'X is Fe', 'X lacks confidence', or 'X seeks harmony'. Those could explain the behavior; they are not observed. The dni field exists to block exactly these leaps.",
    "option_schema": {
     "t": "option text (roast surface)",
-    "w": "axis weights - the ONLY type estimator",
+    "w": "primary axis weights (with sensitivity multipliers); function and duel evidence refine ranking without overriding decided axes",
     "b": "observed behavioral constructs (no typology jargon)",
     "fn": "DERIVED function evidence (from b via behavior_to_function; highest confidence per function wins). Never authored directly.",
     "dni": "do-not-infer list: conclusions this option does NOT license",
@@ -426,7 +426,11 @@
   "v991_note": "Review round: REAL contradiction found and resolved (first non-stale substantive catch in several rounds; the reviewer independently verified the JSON — 99 questions, 454 weights at 1, zero at 2). Resolution = reviewer's option B: axes PRIMARY, functions/duels SECONDARY ranking layers (stale v8 strings said 'sole estimator'). Reviewer's option A (axes-only) REJECTED: it would inert the function layer and kill the owner's elimination model (Ti narrows to ISTP/INTP requires functional contribution). AXIS GUARD added (spec v2.4.2): a decided letter is never flipped by function/duel evidence; undecided axes may be tipped, VISIBLY, and the reveal says so.",
   "testing_route_label": "The '3 family probes + 4 duels + 5 everyday' composition is a VALIDATION/TESTING route for stability tests only. Production selection is ADAPTIVE (engine v2.4.7 section 3). Never hard-code the testing route.",
   "v992_note": "Synced with engine v2.4.7 (was referencing v2.4.1); testing route explicitly labeled. 16 review rounds complete.",
-  "final_status": "APPROVED FOR CODING (engine) · APPROVED FOR PILOT TESTING (questions), NOT YET EMPIRICALLY VALIDATED. All 99 questions: status=uncalibrated; 454 weights at 1, zero at 2. Before any 'validated' claim, pilot data must check: intended interpretation per option, friend-prediction accuracy, comedy-overpick rates, order effects, differential effects (occupation/culture/age/language), route stability, construct redundancy, type stability. Correct stage: uncalibrated production candidates awaiting real-player validation. Final review round 16 (2026-10-15)."
+  "final_status": "APPROVED FOR CODING (engine) · APPROVED FOR PILOT TESTING (questions), NOT YET EMPIRICALLY VALIDATED. All 99 questions: status=uncalibrated; 454 weights at 1, zero at 2. Before any 'validated' claim, pilot data must check: intended interpretation per option, friend-prediction accuracy, comedy-overpick rates, order effects, differential effects (occupation/culture/age/language), route stability, construct redundancy, type stability. Correct stage: uncalibrated production candidates awaiting real-player validation. Final review round 16 (2026-10-15).",
+  "v25_note": "Engine v2.6 sync: individual predictor readings added (split-read reveal when agreement < 60%; best predictor's reading becomes the group row). Pilot-motivated: 50/50 splits at 2 voters produced ghost midpoints.",
+  "v100_note": "Batch 8 COMPLETE: Q39-63 rewritten — the last old-standard block. The entire bank (99 questions) is now at the current standard: one declared distinction, 2 parallel strongs + weak/unscored, filmable scenes, signals, status uncalibrated. End of the content rewrite campaign; remaining work is engine implementation + pilot data.",
+  "v101_note": "Reviewer round: (1) signals declared for ALL questions — 36 no-signal down to 1 intentional (Q27 prediction-only); architecture layer gains explicit signal+contrast+layer metadata (family_probe / function_duel). (2) IPIP questions stripped of cross-axis weights: each option keeps only its declared primary axis; cross-axis evidence removed from typing (interpretation preserved in b). Addresses the multi-axis complaint on Q76,77,79,80,83,86,88-92 mechanically. (3) ENGINE v2.6: three profiles always computed — X, each predictor individually, group aggregate = mean of individual posteriors; agreement threshold controls NARRATION only, never which profiles exist.",
+  "v102_note": "Reviewer round: Q92-A scored F, Q97-C scored J, Q75 C/D unscored; ALL raw 2s demoted to 1 (batch-8 regression fixed; 2 = promotion-only, documented); contrast metadata on all ordinary questions; social-desirability softening Q64-65/Q71-72/Q88/Q91; type_derivation synced to Engine v2.6; w-description corrected."
  },
  "bank": [
   {
@@ -522,7 +526,8 @@
    "signal": [
     "social_energy"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "E_I"
   },
   {
    "id": 2,
@@ -618,7 +623,8 @@
    ],
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "EI-1"
+   "pair": "EI-1",
+   "contrast": "E_I"
   },
   {
    "id": 3,
@@ -720,7 +726,8 @@
    "signal": [
     "preferred_information"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "S_N"
   },
   {
    "id": 4,
@@ -825,7 +832,8 @@
    ],
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "SiNe-1"
+   "pair": "SiNe-1",
+   "contrast": "S_N"
   },
   {
    "id": 5,
@@ -920,7 +928,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 6,
@@ -1020,7 +1029,8 @@
    "signal": [
     "preferred_information"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "S_N"
   },
   {
    "id": 7,
@@ -1107,7 +1117,8 @@
    "signal": [
     "preferred_information"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "S_N"
   },
   {
    "id": 8,
@@ -1203,7 +1214,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 9,
@@ -1293,7 +1305,8 @@
    ],
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "JP-1"
+   "pair": "JP-1",
+   "contrast": "J_P"
   },
   {
    "id": 10,
@@ -1383,7 +1396,8 @@
    "signal": [
     "decision_criteria"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "T_F"
   },
   {
    "id": 11,
@@ -1473,7 +1487,8 @@
    "signal": [
     "preferred_information"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "S_N"
   },
   {
    "id": 12,
@@ -1563,7 +1578,8 @@
    "signal": [
     "decision_criteria"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "T_F"
   },
   {
    "id": 13,
@@ -1656,7 +1672,8 @@
    "signal": [
     "preferred_information"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "S_N"
   },
   {
    "id": 14,
@@ -1748,7 +1765,8 @@
    "signal": [
     "decision_criteria"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "T_F"
   },
   {
    "id": 15,
@@ -1843,7 +1861,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 16,
@@ -1939,7 +1958,8 @@
    ],
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "EI-2"
+   "pair": "EI-2",
+   "contrast": "E_I"
   },
   {
    "id": 17,
@@ -2034,7 +2054,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 18,
@@ -2128,7 +2149,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 19,
@@ -2227,7 +2249,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 20,
@@ -2333,7 +2356,8 @@
     "social_energy"
    ],
    "family": "public_participation",
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "E_I"
   },
   {
    "id": 21,
@@ -2434,7 +2458,8 @@
     "social_energy"
    ],
    "family": "public_participation",
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "E_I"
   },
   {
    "id": 22,
@@ -2523,7 +2548,8 @@
    "signal": [
     "decision_criteria"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "T_F"
   },
   {
    "id": 23,
@@ -2623,7 +2649,8 @@
    ],
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "JP-2"
+   "pair": "JP-2",
+   "contrast": "J_P"
   },
   {
    "id": 24,
@@ -2718,7 +2745,8 @@
    "signal": [
     "social_energy"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "E_I"
   },
   {
    "id": 25,
@@ -2814,7 +2842,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 26,
@@ -2904,7 +2933,8 @@
    "signal": [
     "decision_criteria"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "T_F"
   },
   {
    "id": 27,
@@ -3085,7 +3115,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 29,
@@ -3171,7 +3202,8 @@
    "signal": [
     "decision_criteria"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "T_F"
   },
   {
    "id": 30,
@@ -3267,7 +3299,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 31,
@@ -3365,7 +3398,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 32,
@@ -3457,7 +3491,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 33,
@@ -3549,7 +3584,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 34,
@@ -3645,7 +3681,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 35,
@@ -3739,7 +3776,8 @@
    "signal": [
     "social_energy"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "E_I"
   },
   {
    "id": 36,
@@ -3834,7 +3872,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 37,
@@ -3926,7 +3965,8 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 38,
@@ -4024,573 +4064,37 @@
    "signal": [
     "uncertainty_attitude"
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "J_P"
   },
   {
    "id": 39,
-   "cat": "conflict",
-   "q": "X is in a heated debate. X is playing:",
+   "cat": "social",
+   "q": "X is in a heated debate about something X cares about. What does X actually do?",
    "opts": [
     {
-     "t": "To win. Winning is the entire point of debates.",
+     "t": "X presses the logic until it holds or breaks. Winning is optional; the structure being correct is not.",
      "w": {
       "T": 1
      },
      "b": [
-      "blunt-directness",
-      "efficiency-prioritization"
-     ],
-     "alt": [
-      "competitive debater background"
-     ],
-     "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)",
-      "\"Te because efficient\""
-     ],
-     "fn": {
-      "Te": "moderate",
-      "Ti": "moderate"
-     }
-    },
-    {
-     "t": "To understand. The other side has a point somewhere.",
-     "w": {
-      "F": 1
-     },
-     "b": [
-      "emotional-attunement",
-      "harmony-protection"
-     ],
-     "alt": [
-      "mediator parents"
-     ],
-     "dni": [
-      "\"Fe because kind or caring\"",
-      "\"Fe because peacekeeper\""
-     ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "moderate"
-     }
-    },
-    {
-     "t": "Devil's advocate, purely for the sport of it.",
-     "w": {
-      "N": 1,
-      "P": 1
-     },
-     "b": [
-      "possibility-exploration",
-      "impulse-follow"
-     ],
-     "alt": [
-      "likes arguing for sport"
-     ],
-     "dni": [
-      "\"Ne because the option is imaginative\"",
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)"
-     ],
-     "fn": {
-      "Ne": "high",
-      "Se": "low"
-     }
-    },
-    {
-     "t": "The audience. X is silently rating everyone's arguments.",
-     "w": {
-      "I": 1,
-      "T": 1
-     },
-     "b": [
-      "reflective-processing",
-      "mechanism-analysis"
-     ],
-     "alt": [
-      "judge of character by trade"
-     ],
-     "dni": [
-      "\"Ti because quiet thinker\"",
-      "\"Ti because analytical\""
+      "mechanism-analysis",
+      "blunt-directness"
      ],
      "fn": {
       "Ti": "high",
-      "Ni": "low",
       "Te": "moderate"
-     }
-    }
-   ],
-   "lin": {
-    "facet": "agreeableness-compliance",
-    "strength": "moderate"
-   },
-   "status": "uncalibrated"
-  },
-  {
-   "id": 40,
-   "cat": "conflict",
-   "q": "Someone is confidently wrong on the internet.",
-   "opts": [
-    {
-     "t": "X corrects them. With sources. In public.",
-     "w": {
-      "T": 1,
-      "J": 1
      },
-     "b": [
-      "error-correction",
-      "blunt-directness"
+     "dni": [
+      "\"Ti because analytical\"",
+      "\"T because blunt\" (weak)"
      ],
      "alt": [
-      "teacher reflex",
-      "correcting is the job"
-     ],
-     "dni": [
-      "\"Te because corrects errors\"",
-      "\"T because blunt\" (weak; many blunt people are not T)"
-     ],
-     "fn": {
-      "Te": "moderate",
-      "Ti": "moderate"
-     }
+      "debate-club veteran"
+     ]
     },
     {
-     "t": "X types a full reply, reads it, deletes it, moves on.",
-     "w": {
-      "I": 1,
-      "F": 1
-     },
-     "b": [
-      "reflective-processing",
-      "discomfort-avoidance"
-     ],
-     "alt": [
-      "burned by internet fights"
-     ],
-     "dni": [
-      "\"Ti because quiet thinker\"",
-      "\"I or Fe because avoids\" (avoidance is not diagnostic of either)"
-     ],
-     "fn": {
-      "Ti": "low",
-      "Ni": "low"
-     }
-    },
-    {
-     "t": "X screenshots it for the group chat. Evidence must be shared.",
-     "w": {
-      "E": 1,
-      "F": 1
-     },
-     "b": [
-      "social-information-sharing"
-     ],
-     "alt": [
-      "group-chat comedian role"
-     ],
-     "dni": [
-      "\"Fe because shares news\""
-     ],
-     "fn": {
-      "Fe": "low"
-     }
-    },
-    {
-     "t": "X drafts the reply, then spends an hour perfecting the opening line.",
-     "w": {
-      "N": 1
-     },
-     "b": [
-      "pattern-abstraction",
-      "extended-information-gathering"
-     ],
-     "alt": [
-      "copywriter by trade"
-     ],
-     "dni": [
-      "\"Ni because abstract\"",
-      "\"N because researched\""
-     ],
-     "fn": {
-      "Ni": "moderate",
-      "Ti": "moderate",
-      "Ne": "moderate"
-     }
-    }
-   ],
-   "lin": {
-    "facet": "agreeableness-straightforwardness",
-    "strength": "moderate"
-   },
-   "status": "uncalibrated"
-  },
-  {
-   "id": 41,
-   "cat": "conflict",
-   "q": "A teammate takes credit for X's work.",
-   "opts": [
-    {
-     "t": "Addressed directly, same day, with timestamps.",
-     "w": {
-      "T": 1,
-      "J": 1
-     },
-     "b": [
-      "blunt-directness",
-      "systematic-execution"
-     ],
-     "alt": [
-      "documented for HR before"
-     ],
-     "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)",
-      "\"Te or J because organized\""
-     ],
-     "fn": {
-      "Te": "high",
-      "Ti": "moderate",
-      "Si": "moderate"
-     }
-    },
-    {
-     "t": "X lets it go, keeps a private record, and a long memory.",
-     "w": {
-      "I": 1
-     },
-     "b": [
-      "private-documentation",
-      "discomfort-avoidance"
-     ],
-     "alt": [
-      "avoided a lawsuit once",
-      "keeps records now"
-     ],
-     "dni": [
-      "\"Si because keeps records\"",
-      "\"I or Fe because avoids\" (avoidance is not diagnostic of either)"
-     ],
-     "fn": {
-      "Si": "low"
-     }
-    },
-    {
-     "t": "X makes the next win so loud it erases the theft.",
-     "w": {
-      "E": 1,
-      "T": 1
-     },
-     "b": [
-      "social-initiation",
-      "efficiency-prioritization"
-     ],
-     "alt": [
-      "performer background",
-      "next show mentality"
-     ],
-     "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"Te because efficient\""
-     ],
-     "fn": {
-      "Fe": "moderate",
-      "Se": "low",
-      "Te": "moderate"
-     }
-    },
-    {
-     "t": "X tells everyone except the person involved.",
-     "w": {
-      "F": 1,
-      "E": 1
-     },
-     "b": [
-      "social-information-sharing",
-      "discomfort-avoidance"
-     ],
-     "alt": [
-      "gossip-averse but venting allowed"
-     ],
-     "dni": [
-      "\"Fe because shares news\"",
-      "\"I or Fe because avoids\" (avoidance is not diagnostic of either)"
-     ],
-     "fn": {
-      "Fe": "low"
-     }
-    }
-   ],
-   "lin": {
-    "facet": "extraversion-assertiveness",
-    "strength": "moderate"
-   },
-   "status": "uncalibrated"
-  },
-  {
-   "id": 42,
-   "cat": "conflict",
-   "q": "The group picks a restaurant X genuinely hates.",
-   "opts": [
-    {
-     "t": "X says so immediately. Fries will not fix this.",
-     "w": {
-      "T": 1,
-      "E": 1
-     },
-     "b": [
-      "blunt-directness",
-      "social-initiation"
-     ],
-     "alt": [
-      "allergic to the cuisine",
-      "must speak"
-     ],
-     "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)",
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)"
-     ],
-     "fn": {
-      "Te": "moderate",
-      "Ti": "moderate",
-      "Fe": "moderate",
-      "Se": "low"
-     }
-    },
-    {
-     "t": "X suffers in silence with the one acceptable item.",
-     "w": {
-      "I": 1,
-      "F": 1
-     },
-     "b": [
-      "harmony-protection",
-      "discomfort-avoidance"
-     ],
-     "alt": [
-      "group peacekeeper role since childhood"
-     ],
-     "dni": [
-      "\"Fe because peacekeeper\"",
-      "\"I or Fe because avoids\" (avoidance is not diagnostic of either)"
-     ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "low"
-     }
-    },
-    {
-     "t": "X pitches an alternative with a full presentation.",
-     "w": {
-      "E": 1,
-      "J": 1
-     },
-     "b": [
-      "social-initiation",
-      "systematic-execution"
-     ],
-     "alt": [
-      "pitched ideas professionally"
-     ],
-     "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"Te or J because organized\""
-     ],
-     "fn": {
-      "Fe": "moderate",
-      "Se": "low",
-      "Te": "high",
-      "Si": "moderate"
-     }
-    },
-    {
-     "t": "X goes, orders, then reviews the place brutally in the group chat.",
-     "w": {
-      "I": 1,
-      "T": 1
-     },
-     "b": [
-      "private-documentation",
-      "blunt-directness"
-     ],
-     "alt": [
-      "food critic hobby"
-     ],
-     "dni": [
-      "\"Si because keeps records\"",
-      "\"T because blunt\" (weak; many blunt people are not T)"
-     ],
-     "fn": {
-      "Si": "low",
-      "Te": "moderate",
-      "Ti": "moderate"
-     }
-    }
-   ],
-   "lin": {
-    "facet": "agreeableness-compliance",
-    "strength": "moderate"
-   },
-   "status": "uncalibrated"
-  },
-  {
-   "id": 43,
-   "cat": "conflict",
-   "q": "A friend hasn't replied in three days.",
-   "opts": [
-    {
-     "t": "Zero worry. People have lives.",
-     "w": {
-      "S": 1,
-      "T": 1
-     },
-     "b": [
-      "flexibility-tolerance",
-      "non-diagnostic"
-     ],
-     "alt": [
-      "secure attachment",
-      "trusts the friendship"
-     ],
-     "dni": [
-      "\"P because flexible\" (axis evidence yes; function evidence weak)",
-      "NOTHING may be inferred from this option alone"
-     ],
-     "fn": {
-      "Ne": "low",
-      "Se": "low"
-     }
-    },
-    {
-     "t": "X has drafted a concerned paragraph at 2am.",
-     "w": {
-      "F": 1,
-      "N": 1
-     },
-     "b": [
-      "emotional-attunement",
-      "meaning-interpretation"
-     ],
-     "alt": [
-      "anxious attachment style"
-     ],
-     "dni": [
-      "\"Fe because kind or caring\"",
-      "\"Ni because it seeks meaning\""
-     ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "moderate",
-      "Ni": "moderate",
-      "Ne": "moderate"
-     }
-    },
-    {
-     "t": "X sends escalating memes until a response is extracted.",
-     "w": {
-      "E": 1,
-      "P": 1
-     },
-     "b": [
-      "social-initiation",
-      "impulse-follow"
-     ],
-     "alt": [
-      "meme-account admin"
-     ],
-     "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)"
-     ],
-     "fn": {
-      "Fe": "moderate",
-      "Se": "low",
-      "Te": "low",
-      "Ne": "low"
-     }
-    },
-    {
-     "t": "X assumes the friendship has quietly ended and prepares a eulogy.",
-     "w": {
-      "N": 1,
-      "F": 1
-     },
-     "b": [
-      "meaning-interpretation",
-      "emotional-attunement"
-     ],
-     "alt": [
-      "dramatic storyteller habit"
-     ],
-     "dni": [
-      "\"Ni because it seeks meaning\"",
-      "\"Fe because kind or caring\""
-     ],
-     "fn": {
-      "Ni": "moderate",
-      "Ne": "moderate",
-      "Fi": "moderate",
-      "Fe": "high"
-     }
-    }
-   ],
-   "lin": {
-    "facet": "neuroticism-anxiety (non-MBTI facet)",
-    "strength": "moderate"
-   },
-   "status": "uncalibrated"
-  },
-  {
-   "id": 44,
-   "cat": "conflict",
-   "q": "X receives feedback that genuinely stings.",
-   "opts": [
-    {
-     "t": "X digests it alone for two days, then returns with questions.",
-     "w": {
-      "I": 1,
-      "T": 1
-     },
-     "b": [
-      "reflective-processing",
-      "mechanism-analysis"
-     ],
-     "alt": [
-      "feedback training in corporate"
-     ],
-     "dni": [
-      "\"Ti because quiet thinker\"",
-      "\"Ti because analytical\""
-     ],
-     "fn": {
-      "Ti": "high",
-      "Ni": "low",
-      "Te": "moderate"
-     }
-    },
-    {
-     "t": "X asks follow-up questions immediately, unbothered on the outside.",
-     "w": {
-      "E": 1,
-      "T": 1
-     },
-     "b": [
-      "social-initiation",
-      "mechanism-analysis"
-     ],
-     "alt": [
-      "thinks on their feet"
-     ],
-     "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"Ti because analytical\""
-     ],
-     "fn": {
-      "Fe": "moderate",
-      "Se": "low",
-      "Te": "moderate",
-      "Ti": "high"
-     }
-    },
-    {
-     "t": "X feels it fully for a day, then absorbs the useful 20%.",
+     "t": "X checks what everyone involved would feel about each outcome. A victory that costs the room is a loss.",
      "w": {
       "F": 1
      },
@@ -4598,243 +4102,49 @@
       "emotional-attunement",
       "values-driven-choice"
      ],
-     "alt": [
-      "sensitive temperament",
-      "still uses it"
-     ],
+     "fn": {
+      "Fe": "high",
+      "Fi": "high"
+     },
      "dni": [
       "\"Fe because kind or caring\"",
       "\"Fi because principled\""
      ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "high"
-     }
+     "alt": [
+      "the room matters"
+     ]
     },
     {
-     "t": "X disputes it in the shower for a week, then implements it.",
+     "t": "X argues the other side for a while, just to see if it holds up. The debate is the point.",
      "w": {
-      "I": 1,
-      "J": 1
-     },
-     "b": [
-      "reflective-processing",
-      "systematic-execution"
-     ],
-     "alt": [
-      "lawyer habit",
-      "dispute then comply"
-     ],
-     "dni": [
-      "\"Ti because quiet thinker\"",
-      "\"Te or J because organized\""
-     ],
-     "fn": {
-      "Ti": "low",
-      "Ni": "low",
-      "Te": "high",
-      "Si": "moderate"
-     }
-    }
-   ],
-   "lin": {
-    "facet": "neuroticism-self-consciousness (non-MBTI facet)",
-    "strength": "moderate"
-   },
-   "status": "uncalibrated"
-  },
-  {
-   "id": 45,
-   "cat": "conflict",
-   "q": "X was clearly, provably wrong about something.",
-   "opts": [
-    {
-     "t": "X admits it in one sentence and fixes it.",
-     "w": {
-      "T": 1,
-      "J": 1
-     },
-     "b": [
-      "blunt-directness",
-      "error-correction"
-     ],
-     "alt": [
-      "military directness"
-     ],
-     "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)",
-      "\"Te because corrects errors\""
-     ],
-     "fn": {
-      "Te": "moderate",
-      "Ti": "moderate"
-     }
-    },
-    {
-     "t": "X admits it with a ten-minute context defense.",
-     "w": {
-      "F": 1,
       "N": 1
      },
      "b": [
-      "emotional-attunement",
-      "meaning-interpretation"
-     ],
-     "alt": [
-      "context matters in their culture"
-     ],
-     "dni": [
-      "\"Fe because kind or caring\"",
-      "\"Ni because it seeks meaning\""
+      "possibility-exploration"
      ],
      "fn": {
-      "Fe": "high",
-      "Fi": "moderate",
-      "Ni": "moderate",
-      "Ne": "moderate"
-     }
-    },
-    {
-     "t": "It is never spoken of again. The archive is sealed.",
-     "w": {
-      "P": 1,
-      "I": 1
-     },
-     "b": [
-      "discomfort-avoidance"
-     ],
-     "alt": [
-      "shame-avoidant",
-      "buries mistakes"
-     ],
-     "dni": [
-      "\"I or Fe because avoids\" (avoidance is not diagnostic of either)"
-     ],
-     "fn": {}
-    },
-    {
-     "t": "X announces it publicly before anyone else can.",
-     "w": {
-      "E": 1,
-      "T": 1
-     },
-     "b": [
-      "social-initiation",
-      "blunt-directness"
-     ],
-     "alt": [
-      "announces to control the narrative"
-     ],
-     "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"T because blunt\" (weak; many blunt people are not T)"
-     ],
-     "fn": {
-      "Fe": "moderate",
-      "Se": "low",
-      "Te": "moderate",
-      "Ti": "moderate"
-     }
-    }
-   ],
-   "lin": {
-    "facet": "agreeableness-modesty",
-    "strength": "moderate"
-   },
-   "status": "uncalibrated"
-  },
-  {
-   "id": 46,
-   "cat": "social",
-   "q": "Group dinner. The bill arrives and someone suggests splitting evenly — though X clearly ordered less than everyone.",
-   "opts": [
-    {
-     "t": "X pays the even split without a word. Math is not worth the mood.",
-     "w": {
-      "F": 1
-     },
-     "b": [
-      "harmony-protection"
-     ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "low"
+      "Ne": "high",
+      "Se": "low"
      },
      "dni": [
-      "\"Fe because peacekeeper\""
+      "\"Ne because imaginative\""
      ],
      "alt": [
-      "the difference is small",
-      "eats out rarely"
+      "advocatus diaboli"
      ]
     },
     {
-     "t": "X proposes itemizing. It's not about the money, it's about the principle.",
-     "w": {
-      "T": 1
-     },
+     "t": "X rates everyone's arguments silently, like a judge at a tournament nobody entered.",
+     "w": {},
      "b": [
-      "blunt-directness",
-      "systematic-comparison"
+      "non-diagnostic"
      ],
-     "fn": {
-      "Te": "moderate",
-      "Ti": "moderate"
-     },
+     "fn": {},
      "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)",
-      "\"Te because spreadsheet\""
+      "NOTHING may be inferred from this option alone"
      ],
      "alt": [
-      "genuinely on a budget that week"
-     ]
-    },
-    {
-     "t": "X quietly calculates their exact share, rounds up, puts that in.",
-     "w": {
-      "S": 1,
-      "J": 1
-     },
-     "b": [
-      "detail-grounded",
-      "systematic-execution"
-     ],
-     "fn": {
-      "Si": "moderate",
-      "Se": "moderate",
-      "Te": "high"
-     },
-     "dni": [
-      "\"S because concrete\"",
-      "\"Te or J because organized\""
-     ],
-     "alt": [
-      "waited tables for years",
-      "expense-report habit"
-     ]
-    },
-    {
-     "t": "X suggests everyone just splits, loudly, before anyone does math.",
-     "w": {
-      "F": 1,
-      "P": 1
-     },
-     "b": [
-      "harmony-protection",
-      "impulse-follow"
-     ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "low",
-      "Se": "low",
-      "Ne": "low"
-     },
-     "dni": [
-      "\"Fe because peacekeeper\"",
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)"
-     ],
-     "alt": [
-      "hates being the difficult one"
+      "the internal scoreboard"
      ]
     }
    ],
@@ -4842,11 +4152,674 @@
     "facet": "agreeableness-compliance",
     "strength": "moderate"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
+  },
+  {
+   "id": 40,
+   "cat": "social",
+   "q": "Someone is confidently wrong online, in public, about something X knows well.",
+   "opts": [
+    {
+     "t": "X checks the facts once more, then corrects them precisely, in the thread. Errors are for correcting.",
+     "w": {
+      "T": 1
+     },
+     "b": [
+      "error-correction",
+      "mechanism-analysis"
+     ],
+     "fn": {
+      "Te": "moderate",
+      "Ti": "high"
+     },
+     "dni": [
+      "\"Te because corrects\"",
+      "\"Ti because analytical\""
+     ],
+     "alt": [
+      "the sources are ready"
+     ]
+    },
+    {
+     "t": "X thinks about the person behind the error and sends a kind private note instead. Pride survives better in private.",
+     "w": {
+      "F": 1
+     },
+     "b": [
+      "emotional-attunement",
+      "harmony-protection"
+     ],
+     "fn": {
+      "Fe": "high",
+      "Fi": "moderate"
+     },
+     "dni": [
+      "\"Fe because kind or caring\"",
+      "\"Fe because peacekeeper\""
+     ],
+     "alt": [
+      "public correction stings"
+     ]
+    },
+    {
+     "t": "X types a full reply, reads it, deletes it. The internet will not miss what it never got.",
+     "w": {
+      "I": 1
+     },
+     "b": [
+      "reflective-processing",
+      "discomfort-avoidance"
+     ],
+     "fn": {
+      "Ti": "low",
+      "Ni": "low"
+     },
+     "dni": [
+      "\"Ti because quiet thinker\"",
+      "\"not diagnostic\""
+     ],
+     "alt": [
+      "the draft graveyard"
+     ]
+    },
+    {
+     "t": "X screenshots it for the group chat. Evidence must be shared, justice informal.",
+     "w": {},
+     "b": [
+      "social-information-sharing"
+     ],
+     "fn": {
+      "Fe": "low"
+     },
+     "dni": [],
+     "alt": [
+      "the group chat is the court"
+     ]
+    }
+   ],
+   "lin": {
+    "facet": "agreeableness-straightforwardness",
+    "strength": "moderate"
+   },
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
+  },
+  {
+   "id": 41,
+   "cat": "work",
+   "q": "A teammate takes credit for X's work, in front of everyone.",
+   "opts": [
+    {
+     "t": "X addresses it on the spot, same day, with receipts. Calmly. Timestamps don't argue.",
+     "w": {
+      "E": 1
+     },
+     "b": [
+      "blunt-directness",
+      "social-initiation"
+     ],
+     "fn": {
+      "Te": "moderate",
+      "Ti": "moderate",
+      "Fe": "moderate",
+      "Se": "low"
+     },
+     "dni": [
+      "\"T because blunt\" (weak)",
+      "\"E because seeks people\" (E-axis evidence, not function proof)"
+     ],
+     "alt": [
+      "visibility protects future work"
+     ]
+    },
+    {
+     "t": "X says nothing, keeps a private record, and makes the next win so visible it erases the theft.",
+     "w": {
+      "I": 1
+     },
+     "b": [
+      "solitude-preference",
+      "private-documentation"
+     ],
+     "fn": {
+      "Fi": "low",
+      "Ti": "low",
+      "Ni": "low",
+      "Si": "low"
+     },
+     "dni": [
+      "\"Fi/Ti/Ni because alone\"",
+      "\"Si because records\""
+     ],
+     "alt": [
+      "the long ledger"
+     ]
+    },
+    {
+     "t": "X returns the task to its owner. Flatly. It has a name on it and the name is not X.",
+     "w": {
+      "T": 1
+     },
+     "b": [
+      "blunt-directness",
+      "error-correction"
+     ],
+     "fn": {
+      "Te": "moderate",
+      "Ti": "moderate"
+     },
+     "dni": [
+      "\"T because blunt\" (weak)",
+      "\"Te because corrects\""
+     ],
+     "alt": [
+      "two deadlines already covered"
+     ]
+    },
+    {
+     "t": "X tells everyone except the person involved. The information will arrive; X doesn't have to deliver it.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "the grapevine delivers"
+     ]
+    }
+   ],
+   "lin": {
+    "facet": "extraversion-assertiveness",
+    "strength": "moderate"
+   },
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
+  },
+  {
+   "id": 42,
+   "cat": "social",
+   "q": "The group picks a restaurant X genuinely dislikes. Everyone is excited.",
+   "opts": [
+    {
+     "t": "X says so immediately, kindly, with a reason. Fries will not fix this and everyone should know.",
+     "w": {
+      "E": 1
+     },
+     "b": [
+      "blunt-directness",
+      "social-initiation"
+     ],
+     "fn": {
+      "Te": "moderate",
+      "Ti": "moderate",
+      "Fe": "moderate",
+      "Se": "low"
+     },
+     "dni": [
+      "\"T because blunt\" (weak)",
+      "\"E because seeks people\" (E-axis evidence, not function proof)"
+     ],
+     "alt": [
+      "honesty saves the evening"
+     ]
+    },
+    {
+     "t": "X goes, orders the least-bad item, and mentions it to one trusted friend later. Suffering, shared, halves.",
+     "w": {
+      "I": 1
+     },
+     "b": [
+      "solitude-preference",
+      "emotional-attunement"
+     ],
+     "fn": {
+      "Fi": "moderate",
+      "Ti": "low",
+      "Ni": "low",
+      "Fe": "high"
+     },
+     "dni": [
+      "\"Fi/Ti/Ni because alone\"",
+      "\"Fe because kind or caring\""
+     ],
+     "alt": [
+      "the trusted friend"
+     ]
+    },
+    {
+     "t": "X pitches an alternative with a mini-presentation. The group deserves options.",
+     "w": {
+      "J": 1
+     },
+     "b": [
+      "systematic-comparison"
+     ],
+     "fn": {
+      "Te": "moderate",
+      "Ti": "moderate"
+     },
+     "dni": [
+      "\"Te because spreadsheet\""
+     ],
+     "alt": [
+      "slides at dinner, why not"
+     ]
+    },
+    {
+     "t": "X goes and files a brutal review online that night. Justice, eventually.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "the review is cathartic"
+     ]
+    }
+   ],
+   "lin": {
+    "facet": "agreeableness-compliance",
+    "strength": "moderate"
+   },
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
+  },
+  {
+   "id": 43,
+   "cat": "social",
+   "q": "A friend hasn't replied to X's message in three days.",
+   "opts": [
+    {
+     "t": "Zero worry. People have lives; the message will surface when it surfaces.",
+     "w": {
+      "T": 1
+     },
+     "b": [
+      "detail-grounded",
+      "flexibility-tolerance"
+     ],
+     "fn": {
+      "Si": "moderate",
+      "Se": "moderate",
+      "Ne": "low"
+     },
+     "dni": [
+      "\"S because concrete\"",
+      "\"P because flexible\" (axis yes; function weak)"
+     ],
+     "alt": [
+      "secure attachment"
+     ]
+    },
+    {
+     "t": "X has drafted a concerned paragraph at 2am and is sitting on it. The paragraph is tender and unhinged.",
+     "w": {
+      "F": 1
+     },
+     "b": [
+      "emotional-attunement"
+     ],
+     "fn": {
+      "Fe": "high",
+      "Fi": "moderate"
+     },
+     "dni": [
+      "\"Fe because kind or caring\""
+     ],
+     "alt": [
+      "anxious at 2am"
+     ]
+    },
+    {
+     "t": "X sends escalating memes until a response is extracted. The memes escalate structurally.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "meme diplomacy"
+     ]
+    },
+    {
+     "t": "X concludes the friendship has quietly ended and writes the eulogy. It was a good run.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "dramatic, briefly"
+     ]
+    }
+   ],
+   "lin": {
+    "facet": "neuroticism-anxiety (non-MBTI facet)",
+    "strength": "moderate"
+   },
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
+  },
+  {
+   "id": 44,
+   "cat": "work",
+   "q": "X receives feedback that genuinely stings. It's partly right.",
+   "opts": [
+    {
+     "t": "X digests it alone for two days, separates the useful 40%, and returns with questions. Processed, then used.",
+     "w": {
+      "T": 1
+     },
+     "b": [
+      "mechanism-analysis",
+      "deliberative-processing"
+     ],
+     "fn": {
+      "Ti": "high",
+      "Te": "moderate",
+      "Ni": "low"
+     },
+     "dni": [
+      "\"Ti because analytical\"",
+      "\"Ti/Ni because thinks\""
+     ],
+     "alt": [
+      "processing takes space"
+     ]
+    },
+    {
+     "t": "X feels it fully for a day — the sting is information too — then keeps what helps and releases the rest.",
+     "w": {
+      "F": 1
+     },
+     "b": [
+      "emotional-attunement",
+      "values-driven-choice"
+     ],
+     "fn": {
+      "Fe": "high",
+      "Fi": "high"
+     },
+     "dni": [
+      "\"Fe because kind or caring\"",
+      "\"Fi because principled\""
+     ],
+     "alt": [
+      "feelings are data"
+     ]
+    },
+    {
+     "t": "X asks follow-up questions immediately, unbothered on the outside, taking notes.",
+     "w": {
+      "E": 1
+     },
+     "b": [
+      "social-initiation",
+      "mechanism-analysis"
+     ],
+     "fn": {
+      "Fe": "moderate",
+      "Se": "low",
+      "Te": "moderate",
+      "Ti": "high"
+     },
+     "dni": [
+      "\"E because seeks people\" (E-axis evidence, not function proof)",
+      "\"Ti because analytical\""
+     ],
+     "alt": [
+      "thick skin, real-time"
+     ]
+    },
+    {
+     "t": "X disputes the feedback in the shower for a week, then implements the useful part anyway.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "the shower tribunal"
+     ]
+    }
+   ],
+   "lin": {
+    "facet": "neuroticism-self-consciousness (non-MBTI facet)",
+    "strength": "moderate"
+   },
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
+  },
+  {
+   "id": 45,
+   "cat": "social",
+   "q": "X was clearly, provably wrong about something, in front of people.",
+   "opts": [
+    {
+     "t": "X admits it in one sentence and fixes it. The correction takes less time than the excuse would have.",
+     "w": {
+      "T": 1
+     },
+     "b": [
+      "error-correction",
+      "blunt-directness"
+     ],
+     "fn": {
+      "Te": "moderate",
+      "Ti": "moderate"
+     },
+     "dni": [
+      "\"Te because corrects\"",
+      "\"T because blunt\" (weak)"
+     ],
+     "alt": [
+      "clean and fast"
+     ]
+    },
+    {
+     "t": "X admits it with context, care for the people affected, and a small repair gesture. The relationship outlasts the error.",
+     "w": {
+      "F": 1
+     },
+     "b": [
+      "emotional-attunement",
+      "prosocial-action"
+     ],
+     "fn": {
+      "Fe": "high",
+      "Fi": "moderate"
+     },
+     "dni": [
+      "\"Fe because kind or caring\"",
+      "\"Fe because generous\""
+     ],
+     "alt": [
+      "repair includes people"
+     ]
+    },
+    {
+     "t": "It is never spoken of again. The archive is sealed. The statue of limitations is instant.",
+     "w": {
+      "I": 1
+     },
+     "b": [
+      "solitude-preference",
+      "discomfort-avoidance"
+     ],
+     "fn": {
+      "Fi": "low",
+      "Ti": "low",
+      "Ni": "low"
+     },
+     "dni": [
+      "\"Fi/Ti/Ni because alone\"",
+      "\"not diagnostic\""
+     ],
+     "alt": [
+      "the sealed archive"
+     ]
+    },
+    {
+     "t": "X announces it publicly before anyone else can, with a joke. Narrative control is damage control.",
+     "w": {
+      "E": 1
+     },
+     "b": [
+      "social-initiation"
+     ],
+     "fn": {
+      "Fe": "moderate",
+      "Se": "low",
+      "Te": "low"
+     },
+     "dni": [
+      "\"E because seeks people\" (E-axis evidence, not function proof)"
+     ],
+     "alt": [
+      "controlling the story"
+     ]
+    }
+   ],
+   "lin": {
+    "facet": "agreeableness-modesty",
+    "strength": "moderate"
+   },
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
+  },
+  {
+   "id": 46,
+   "cat": "social",
+   "q": "Group dinner. The bill arrives and someone suggests splitting evenly — though X clearly ordered less.",
+   "opts": [
+    {
+     "t": "X pays the even split without a word. Math is not worth the mood.",
+     "w": {
+      "F": 1
+     },
+     "b": [
+      "harmony-protection",
+      "prosocial-action"
+     ],
+     "fn": {
+      "Fe": "high",
+      "Fi": "low"
+     },
+     "dni": [
+      "\"Fe because peacekeeper\"",
+      "\"Fe because generous\""
+     ],
+     "alt": [
+      "the difference is small"
+     ]
+    },
+    {
+     "t": "X proposes itemizing. It's not about the money; it's about the principle of the thing.",
+     "w": {
+      "T": 1
+     },
+     "b": [
+      "systematic-comparison",
+      "blunt-directness"
+     ],
+     "fn": {
+      "Te": "moderate",
+      "Ti": "moderate"
+     },
+     "dni": [
+      "\"Te because spreadsheet\"",
+      "\"T because blunt\" (weak)"
+     ],
+     "alt": [
+      "the principle is real"
+     ]
+    },
+    {
+     "t": "X quietly puts in their exact share, rounded up. The precision says what words don't.",
+     "w": {
+      "J": 1
+     },
+     "b": [
+      "systematic-comparison",
+      "efficiency-prioritization"
+     ],
+     "fn": {
+      "Te": "moderate",
+      "Ti": "moderate"
+     },
+     "dni": [
+      "\"Te because spreadsheet\"",
+      "\"Te because efficient\""
+     ],
+     "alt": [
+      "waited tables once"
+     ]
+    },
+    {
+     "t": "X suggests everyone just splits, loudly, before anyone does math. The peace is the point.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "the preemptive peace"
+     ]
+    }
+   ],
+   "lin": {
+    "facet": "agreeableness-compliance",
+    "strength": "moderate"
+   },
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 47,
-   "cat": "hypothetical",
+   "cat": "work",
    "q": "X's honest relationship with the monthly budget:",
    "opts": [
     {
@@ -4855,38 +4828,35 @@
       "J": 1
      },
      "b": [
-      "systematic-execution"
+      "systematic-execution",
+      "private-documentation"
      ],
      "fn": {
       "Te": "high",
       "Si": "moderate"
      },
      "dni": [
-      "\"Te or J because organized\""
+      "\"Te/J because organized\"",
+      "\"Si because records\""
      ],
      "alt": [
       "the ledger is neutral"
      ]
     },
     {
-     "t": "Rough mental arithmetic, adjusted by vibes. It mostly holds.",
+     "t": "Rough mental math, adjusted by vibes. It mostly holds; the vibes are fiscal policy.",
      "w": {
-      "P": 1,
-      "N": 1
+      "P": 1
      },
      "b": [
-      "flexibility-tolerance",
-      "pattern-abstraction"
+      "flexibility-tolerance"
      ],
      "fn": {
-      "Ne": "moderate",
-      "Se": "low",
-      "Ni": "moderate",
-      "Ti": "moderate"
+      "Ne": "low",
+      "Se": "low"
      },
      "dni": [
-      "\"P because flexible\" (axis evidence yes; function evidence weak)",
-      "\"Ni because abstract\""
+      "\"P because flexible\" (axis yes; function weak)"
      ],
      "alt": [
       "vibes are a currency"
@@ -4895,8 +4865,7 @@
     {
      "t": "Automated: savings leave on payday before X can meet the money. X and the money never touch.",
      "w": {
-      "J": 1,
-      "T": 1
+      "J": 1
      },
      "b": [
       "systematic-execution",
@@ -4907,7 +4876,7 @@
       "Si": "moderate"
      },
      "dni": [
-      "\"Te or J because organized\"",
+      "\"Te/J because organized\"",
       "\"Te because efficient\""
      ],
      "alt": [
@@ -4915,21 +4884,14 @@
      ]
     },
     {
-     "t": "The budget is a poem, not a plan. Money comes, money goes, and somehow it works.",
-     "w": {
-      "P": 1
-     },
+     "t": "The budget is a poem, not a plan. Money comes, money goes; somehow the rent is always paid.",
+     "w": {},
      "b": [
-      "flexibility-tolerance",
-      "impulse-follow"
+      "non-diagnostic"
      ],
-     "fn": {
-      "Ne": "low",
-      "Se": "low"
-     },
+     "fn": {},
      "dni": [
-      "\"P because flexible\" (axis evidence yes; function evidence weak)",
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)"
+      "NOTHING may be inferred from this option alone"
      ],
      "alt": [
       "the poem pays the rent"
@@ -4937,7 +4899,11 @@
     }
    ],
    "src": "ipip:conscientiousness-self-discipline (financial behavior research)",
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 48,
@@ -4945,180 +4911,152 @@
    "q": "X is stuck in an elevator for three hours with five strangers.",
    "opts": [
     {
-     "t": "X organizes the group, inventories the snacks, assigns roles.",
-     "w": {
-      "J": 1,
-      "E": 1
-     },
-     "b": [
-      "systematic-execution",
-      "social-initiation"
-     ],
-     "alt": [
-      "scout leader",
-      "team roles instinct"
-     ],
-     "dni": [
-      "\"Te or J because organized\"",
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)"
-     ],
-     "fn": {
-      "Te": "high",
-      "Si": "moderate",
-      "Fe": "moderate",
-      "Se": "low"
-     }
-    },
-    {
-     "t": "X finds the philosophical angle. We're all elevators, really.",
-     "w": {
-      "N": 1
-     },
-     "b": [
-      "meaning-interpretation",
-      "pattern-abstraction"
-     ],
-     "alt": [
-      "philosophy student"
-     ],
-     "dni": [
-      "\"Ni because it seeks meaning\"",
-      "\"Ni because abstract\""
-     ],
-     "fn": {
-      "Ni": "moderate",
-      "Ne": "moderate",
-      "Fi": "low",
-      "Ti": "moderate"
-     }
-    },
-    {
-     "t": "X naps against the wall. Wake me when it's over.",
-     "w": {
-      "I": 1,
-      "P": 1
-     },
-     "b": [
-      "solitude-preference",
-      "flexibility-tolerance"
-     ],
-     "alt": [
-      "sleeps anywhere",
-      "travel experience"
-     ],
-     "dni": [
-      "\"Fi/Ti/Ni because they enjoy being alone\"",
-      "\"P because flexible\" (axis evidence yes; function evidence weak)"
-     ],
-     "fn": {
-      "Fi": "low",
-      "Ti": "low",
-      "Ni": "low",
-      "Ne": "low",
-      "Se": "low"
-     }
-    },
-    {
-     "t": "X befriends everyone and leaves with five new phone numbers.",
+     "t": "X organizes the group: introductions, resources, games, a seating plan. The elevator becomes an event.",
      "w": {
       "E": 1
      },
      "b": [
-      "social-initiation"
-     ],
-     "alt": [
-      "networking professional"
-     ],
-     "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)"
+      "social-initiation",
+      "systematic-execution"
      ],
      "fn": {
       "Fe": "moderate",
       "Se": "low",
-      "Te": "low"
-     }
+      "Te": "high",
+      "Si": "moderate"
+     },
+     "dni": [
+      "\"E because seeks people\" (E-axis evidence, not function proof)",
+      "\"Te/J because organized\""
+     ],
+     "alt": [
+      "the organizer instinct"
+     ]
+    },
+    {
+     "t": "X finds one person and has the deep three-hour conversation that strangers never usually have.",
+     "w": {
+      "I": 1
+     },
+     "b": [
+      "solitude-preference",
+      "emotional-attunement"
+     ],
+     "fn": {
+      "Fi": "moderate",
+      "Ti": "low",
+      "Ni": "low",
+      "Fe": "high"
+     },
+     "dni": [
+      "\"Fi/Ti/Ni because alone\"",
+      "\"Fe because kind or caring\""
+     ],
+     "alt": [
+      "strangers open up"
+     ]
+    },
+    {
+     "t": "X assigns everyone practical roles and a maintenance schedule for the wait. Someone must optimize.",
+     "w": {
+      "J": 1
+     },
+     "b": [
+      "systematic-execution",
+      "preparation-driven"
+     ],
+     "fn": {
+      "Te": "high",
+      "Si": "high"
+     },
+     "dni": [
+      "\"Te/J because organized\"",
+      "\"Si/J because prepared\""
+     ],
+     "alt": [
+      "the schedule helps"
+     ]
+    },
+    {
+     "t": "X naps against the wall. Wake X when it's over; X is unavailable until then.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "sleeps anywhere"
+     ]
     }
    ],
    "lin": {
     "facet": "extraversion-gregariousness",
     "strength": "moderate"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 49,
    "cat": "work",
-   "q": "X has written an email that is genuinely angry. The facts are on X's side. The Send button is right there.",
+   "q": "X has written an email that is genuinely angry. The Send button is right there.",
    "opts": [
     {
-     "t": "X sends it. Facts are facts, and tone is the reader's problem.",
+     "t": "X sends it now. The anger is data, and the facts are on X's side. Tone is the reader's problem.",
      "w": {
-      "T": 1
+      "P": 1
      },
      "b": [
+      "impulse-follow",
       "blunt-directness"
      ],
      "fn": {
+      "Se": "low",
+      "Ne": "low",
       "Te": "moderate",
       "Ti": "moderate"
      },
      "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)"
+      "\"Se because impulsive\" (function LOW)",
+      "\"T because blunt\" (weak)"
      ],
      "alt": [
-      "slept on it yesterday",
-      "legal already reviewed it"
+      "heat is honesty"
      ]
     },
     {
-     "t": "X re-reads it and removes two adjectives before sending.",
+     "t": "X sits on it until tomorrow, revises once, sends the colder version. The 24-hour rule wins again.",
      "w": {
-      "F": 1,
-      "T": 1
+      "J": 1
      },
      "b": [
-      "harmony-protection"
+      "preparation-driven",
+      "deliberative-processing"
      ],
      "fn": {
-      "Fe": "high",
-      "Fi": "low"
-     },
-     "dni": [
-      "\"Fe because peacekeeper\""
-     ],
-     "alt": [
-      "knows caps-lock regret personally"
-     ]
-    },
-    {
-     "t": "X saves it as a draft and revisits it tomorrow.",
-     "w": {
-      "J": 1,
-      "I": 1
-     },
-     "b": [
-      "reflective-processing",
-      "systematic-execution"
-     ],
-     "fn": {
+      "Si": "high",
+      "Te": "moderate",
       "Ti": "low",
-      "Ni": "low",
-      "Te": "high",
-      "Si": "moderate"
+      "Ni": "low"
      },
      "dni": [
-      "\"Ti because quiet thinker\"",
-      "\"Te or J because organized\""
+      "\"Si/J because prepared\"",
+      "\"Ti/Ni because thinks\""
      ],
      "alt": [
-      "the 24-hour rule is company policy"
+      "cold is sharper"
      ]
     },
     {
-     "t": "X deletes it and walks over to talk in person.",
+     "t": "X deletes it and walks over to talk in person. Tone dies in email; X delivers it live.",
      "w": {
-      "E": 1,
-      "F": 1
+      "E": 1
      },
      "b": [
       "social-initiation",
@@ -5131,11 +5069,25 @@
       "Fi": "moderate"
      },
      "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
+      "\"E because seeks people\" (E-axis evidence, not function proof)",
       "\"Fe because kind or caring\""
      ],
      "alt": [
-      "knows tone dies in email"
+      "the live version lands"
+     ]
+    },
+    {
+     "t": "X saves it as a draft titled 'maybe'. The maybe folder has a hundred residents.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "the draft museum"
      ]
     }
    ],
@@ -5143,20 +5095,25 @@
     "facet": "openness-fantasy",
     "strength": "moderate"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 50,
    "cat": "social",
-   "q": "X is with friends and everyone laughs at a reference X doesn't get.",
+   "q": "Everyone laughs at a reference X doesn't get.",
    "opts": [
     {
-     "t": "X asks immediately. Being outside a joke for 40 seconds is unbearable.",
+     "t": "X asks immediately. Being outside a joke for thirty seconds is unbearable.",
      "w": {
       "E": 1
      },
      "b": [
-      "social-initiation"
+      "social-initiation",
+      "help-seeking"
      ],
      "fn": {
       "Fe": "moderate",
@@ -5164,17 +5121,17 @@
       "Te": "low"
      },
      "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)"
+      "\"E because seeks people\" (E-axis evidence, not function proof)",
+      "\"E because asks\""
      ],
      "alt": [
-      "asks about everything, always"
+      "asks about everything"
      ]
     },
     {
-     "t": "X laughs along, then looks it up in the bathroom.",
+     "t": "X laughs along, then looks it up in the bathroom. Dignity preserved; knowledge acquired.",
      "w": {
-      "I": 1,
-      "S": 1
+      "I": 1
      },
      "b": [
       "reflective-processing",
@@ -5191,56 +5148,43 @@
       "\"S because concrete\""
      ],
      "alt": [
-      "googles everything, shamelessly"
+      "the bathroom scholar"
      ]
     },
     {
-     "t": "X waits and asks one trusted person later, privately.",
+     "t": "X waits and asks one trusted person later, privately. Learning has a preferred channel.",
      "w": {
-      "I": 1,
-      "F": 1
+      "I": 1
      },
      "b": [
       "solitude-preference",
-      "emotional-attunement"
+      "help-seeking"
      ],
      "fn": {
-      "Fi": "moderate",
+      "Fi": "low",
       "Ti": "low",
-      "Ni": "low",
-      "Fe": "high"
+      "Ni": "low"
      },
      "dni": [
-      "\"Fi/Ti/Ni because they enjoy being alone\"",
-      "\"Fe because kind or caring\""
+      "\"Fi/Ti/Ni because alone\"",
+      "\"E because asks\""
      ],
      "alt": [
-      "the friend is the group's historian"
+      "one trusted source"
      ]
     },
     {
-     "t": "X decides the joke belongs to a world they don't need.",
-     "w": {
-      "T": 1,
-      "N": 1
-     },
+     "t": "X decides the joke belongs to a world they don't need. Freedom, quietly purchased.",
+     "w": {},
      "b": [
-      "blunt-directness",
-      "meaning-interpretation"
+      "non-diagnostic"
      ],
-     "fn": {
-      "Te": "moderate",
-      "Ti": "moderate",
-      "Ni": "moderate",
-      "Ne": "moderate",
-      "Fi": "low"
-     },
+     "fn": {},
      "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)",
-      "\"Ni because it seeks meaning\""
+      "NOTHING may be inferred from this option alone"
      ],
      "alt": [
-      "genuinely did not care"
+      "genuine disinterest"
      ]
     }
    ],
@@ -5248,15 +5192,19 @@
     "facet": "openness-ideas",
     "strength": "moderate"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 51,
    "cat": "hypothetical",
-   "q": "X's queue of saved content — videos, articles, podcasts:",
+   "q": "X's queue of saved content — articles, videos, podcasts:",
    "opts": [
     {
-     "t": "Deep dives on one topic until mastery, then the next obsession begins. Serial obsessions, fully catalogued.",
+     "t": "Deep dives on one topic until real understanding, then the next obsession begins. Serial mastery.",
      "w": {
       "N": 1
      },
@@ -5274,30 +5222,29 @@
       "\"Ni because abstract\""
      ],
      "alt": [
-      "the archive of obsessions"
+      "obsessions, catalogued"
      ]
     },
     {
-     "t": "Whatever opened last. The queue is a buffet and X grazes happily.",
+     "t": "Whatever opened last. The queue is a buffet and X grazes happily, ten minutes of everything.",
      "w": {
-      "P": 1,
       "S": 1
      },
      "b": [
-      "impulse-follow",
-      "present-moment-focus"
+      "present-moment-focus",
+      "stimulation-seeking"
      ],
      "fn": {
-      "Se": "moderate",
-      "Ne": "low",
-      "Si": "moderate"
+      "Se": "high",
+      "Si": "moderate",
+      "Ne": "moderate"
      },
      "dni": [
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)",
-      "\"Se because present\""
+      "\"Se because present\"",
+      "\"Se because active\""
      ],
      "alt": [
-      "the algorithm feeds"
+      "the grazer"
      ]
     },
     {
@@ -5313,39 +5260,38 @@
       "Si": "moderate"
      },
      "dni": [
-      "\"Te or J because organized\""
+      "\"Te/J because organized\""
      ],
      "alt": [
       "inbox zero, content edition"
      ]
     },
     {
-     "t": "Saved for a hypothetical future self who has time. That self, tragically, is a myth.",
-     "w": {
-      "P": 1
-     },
+     "t": "Saved for a hypothetical future self who has free time. That self is a myth and always will be.",
+     "w": {},
      "b": [
-      "flexibility-tolerance"
+      "non-diagnostic"
      ],
-     "fn": {
-      "Ne": "low",
-      "Se": "low"
-     },
+     "fn": {},
      "dni": [
-      "\"P because flexible\" (axis evidence yes; function evidence weak)"
+      "NOTHING may be inferred from this option alone"
      ],
      "alt": [
-      "409 saves and counting"
+      "409 saves, zero returns"
      ]
     }
    ],
    "src": "ipip:openness-ideas",
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "preferred_information"
+   ],
+   "contrast": "S_N"
   },
   {
    "id": 52,
    "cat": "hypothetical",
-   "q": "X's natural walking pace, honestly:",
+   "q": "X's natural walking speed, honestly:",
    "opts": [
     {
      "t": "Purposeful. X arrives everywhere three minutes early without ever seeming to hurry.",
@@ -5353,24 +5299,25 @@
       "J": 1
      },
      "b": [
-      "systematic-execution"
+      "systematic-execution",
+      "efficiency-prioritization"
      ],
      "fn": {
       "Te": "high",
       "Si": "moderate"
      },
      "dni": [
-      "\"Te or J because organized\""
+      "\"Te/J because organized\"",
+      "\"Te because efficient\""
      ],
      "alt": [
       "the pace is the plan"
      ]
     },
     {
-     "t": "Scenic. X stops for dogs, shop windows, and stray thoughts. Arrival is a rumor.",
+     "t": "Scenic. X stops for dogs, windows, and stray thoughts. Arrival is a rumor.",
      "w": {
-      "P": 1,
-      "S": 1
+      "P": 1
      },
      "b": [
       "present-moment-focus",
@@ -5382,14 +5329,15 @@
       "Ne": "moderate"
      },
      "dni": [
-      "\"Se because present\""
+      "\"Se because present\"",
+      "\"Se because active\""
      ],
      "alt": [
       "the dog count is high"
      ]
     },
     {
-     "t": "Depends entirely on who walks beside X. Chameleon pace, perfectly matched.",
+     "t": "It depends entirely on who walks beside X. Chameleon pace, perfectly matched.",
      "w": {
       "F": 1
      },
@@ -5408,21 +5356,17 @@
      ]
     },
     {
-     "t": "Race-walk to the meeting, stroll on the way back. The destination sets the speed.",
+     "t": "Race-walk to commitments, stroll on the way back. The destination sets the speed.",
      "w": {
-      "J": 1,
-      "T": 1
+      "J": 1
      },
      "b": [
-      "systematic-execution",
       "efficiency-prioritization"
      ],
      "fn": {
-      "Te": "high",
-      "Si": "moderate"
+      "Te": "moderate"
      },
      "dni": [
-      "\"Te or J because organized\"",
       "\"Te because efficient\""
      ],
      "alt": [
@@ -5431,12 +5375,16 @@
     }
    ],
    "src": "ipip:extraversion-activity",
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 53,
    "cat": "hypothetical",
-   "q": "Someone ahead of X in the hallway drops their papers, clearly in a hurry:",
+   "q": "Someone ahead of X in the hallway drops their papers, clearly in a hurry.",
    "opts": [
     {
      "t": "X is already crouched, gathering, sorting by page number before the person turns around.",
@@ -5460,78 +5408,66 @@
      ]
     },
     {
-     "t": "X picks up the nearest pages and hands them over with a nod. Efficient kindness.",
+     "t": "X picks up the nearest pages, hands them over with a nod. Efficient kindness, minimal theater.",
      "w": {
-      "S": 1
-     },
-     "b": [
-      "detail-grounded"
-     ],
-     "fn": {
-      "Si": "moderate",
-      "Se": "moderate"
-     },
-     "dni": [
-      "\"S because concrete\""
-     ],
-     "alt": [
-      "the nod says it all"
-     ]
-    },
-    {
-     "t": "X calls out 'you dropped these!' — pointing is also helping, technically.",
-     "w": {
-      "E": 1,
       "T": 1
      },
      "b": [
-      "social-initiation",
-      "blunt-directness"
+      "efficiency-prioritization"
      ],
      "fn": {
-      "Fe": "moderate",
-      "Se": "low",
-      "Te": "moderate",
-      "Ti": "moderate"
+      "Te": "moderate"
      },
      "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"T because blunt\" (weak)"
+      "\"Te because efficient\""
      ],
      "alt": [
-      "remote assistance"
+      "the nod says it"
      ]
     },
     {
-     "t": "X briefly considers it, but X is also in a hurry. Karma owes X one.",
-     "w": {
-      "P": 1
-     },
+     "t": "X calls out 'you dropped these!' from a distance. Remote assistance is still assistance.",
+     "w": {},
      "b": [
-      "impulse-follow"
+      "help-seeking"
      ],
-     "fn": {
-      "Se": "low",
-      "Ne": "low"
-     },
+     "fn": {},
      "dni": [
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)"
+      "\"E because asks\""
      ],
      "alt": [
-      "the karma ledger is long"
+      "pointing is helping, technically"
+     ]
+    },
+    {
+     "t": "X briefly considers it, but X is also in a hurry. Karma owes X one; the ledger is long.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "the karma ledger"
      ]
     }
    ],
    "src": "ipip:agreeableness-altruism",
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 54,
    "cat": "work",
-   "q": "Friday, 5pm. A teammate hands X a task that was theirs, saying “you're better at it anyway.”",
+   "q": "Friday, 5pm. A teammate hands X a task that was theirs, saying 'you're better at it anyway.'",
    "opts": [
     {
-     "t": "X does it and says nothing. The ledger stays open.",
+     "t": "X does it and says nothing. The ledger stays open; X remembers everything.",
      "w": {
       "I": 1
      },
@@ -5546,77 +5482,70 @@
       "Si": "low"
      },
      "dni": [
-      "\"Fi/Ti/Ni because they enjoy being alone\"",
-      "\"Si because keeps records\""
+      "\"Fi/Ti/Ni because alone\"",
+      "\"Si because records\""
      ],
      "alt": [
-      "it's twenty minutes of work",
-      "saving favors for review season"
+      "the quiet ledger"
      ]
     },
     {
-     "t": "X does it — and mentions the handoff in Monday's standup.",
+     "t": "X does it — and mentions the handoff at Monday's standup, casually. Visibility is protection.",
      "w": {
-      "E": 1,
+      "E": 1
+     },
+     "b": [
+      "social-initiation",
+      "social-information-sharing"
+     ],
+     "fn": {
+      "Fe": "moderate",
+      "Se": "low",
+      "Te": "low"
+     },
+     "dni": [
+      "\"E because seeks people\" (E-axis evidence, not function proof)"
+     ],
+     "alt": [
+      "the record, public"
+     ]
+    },
+    {
+     "t": "X gives it back. Flatly. It has an owner and the owner is not X.",
+     "w": {
       "T": 1
      },
      "b": [
-      "social-information-sharing",
       "blunt-directness"
      ],
      "fn": {
-      "Fe": "low",
       "Te": "moderate",
       "Ti": "moderate"
      },
      "dni": [
-      "\"Fe because shares news\"",
-      "\"T because blunt\" (weak; many blunt people are not T)"
+      "\"T because blunt\" (weak)"
      ],
      "alt": [
-      "visibility matters for promotion"
+      "two deadlines already"
      ]
     },
     {
-     "t": "X gives it back. Flatly. It has a name on it and the name is not X.",
+     "t": "X takes it — if the teammate takes X's Monday thing in exchange. Trades are how X loves.",
      "w": {
-      "T": 1
+      "J": 1
      },
      "b": [
-      "blunt-directness"
-     ],
-     "fn": {
-      "Te": "moderate",
-      "Ti": "moderate"
-     },
-     "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)"
-     ],
-     "alt": [
-      "already covering two deadlines"
-     ]
-    },
-    {
-     "t": "X takes it — if the teammate takes X's Monday thing in exchange.",
-     "w": {
-      "J": 1,
-      "T": 1
-     },
-     "b": [
-      "systematic-execution",
       "systematic-comparison"
      ],
      "fn": {
-      "Te": "high",
-      "Si": "moderate",
+      "Te": "moderate",
       "Ti": "moderate"
      },
      "dni": [
-      "\"Te or J because organized\"",
       "\"Te because spreadsheet\""
      ],
      "alt": [
-      "trades favors normally"
+      "the favor economy"
      ]
     }
    ],
@@ -5624,18 +5553,21 @@
     "facet": "agreeableness-compliance",
     "strength": "moderate"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 55,
-   "cat": "conflict",
-   "q": "In a meeting, X is confidently wrong about a fact — and a junior politely corrects them. Everyone heard.",
+   "cat": "work",
+   "q": "In a meeting, X is confidently wrong about a fact — and a junior politely corrects X. Everyone heard.",
    "opts": [
     {
-     "t": "X thanks them on the spot and updates the notes.",
+     "t": "X thanks them on the spot and updates the notes. The facts win; the junior earned something.",
      "w": {
-      "T": 1,
-      "J": 1
+      "T": 1
      },
      "b": [
       "error-correction",
@@ -5647,42 +5579,52 @@
       "Si": "moderate"
      },
      "dni": [
-      "\"Te because corrects errors\"",
-      "\"Te or J because organized\""
+      "\"Te because corrects\"",
+      "\"Te/J because organized\""
      ],
      "alt": [
-      "runs blameless postmortems"
+      "the notes are updated"
      ]
     },
     {
-     "t": "X says “are you sure?”, checks, and defends the point for ten more minutes.",
+     "t": "X makes sure the correction didn't cost the junior anything — a word after, a credit in the recap. People outlive meetings.",
      "w": {
-      "F": 1,
-      "N": 1
+      "F": 1
      },
      "b": [
-      "harmony-protection",
-      "meaning-interpretation"
+      "emotional-attunement",
+      "harmony-protection"
      ],
      "fn": {
       "Fe": "high",
-      "Fi": "low",
-      "Ni": "moderate",
-      "Ne": "moderate"
+      "Fi": "moderate"
      },
      "dni": [
-      "\"Fe because peacekeeper\"",
-      "\"Ni because it seeks meaning\""
+      "\"Fe because kind or caring\"",
+      "\"Fe because peacekeeper\""
      ],
      "alt": [
-      "the fact was half-true, to be fair"
+      "protection after"
      ]
     },
     {
-     "t": "X goes quiet, re-checks afterwards, and admits it by email.",
+     "t": "X says 'are you sure?' and defends the point for ten more minutes. The ship goes down with its captain.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "the sinking ship"
+     ]
+    },
+    {
+     "t": "X goes quiet, re-checks afterward, and admits it by email. The correction arrives late but arrives.",
      "w": {
-      "I": 1,
-      "T": 1
+      "I": 1
      },
      "b": [
       "reflective-processing",
@@ -5695,34 +5637,10 @@
      },
      "dni": [
       "\"Ti because quiet thinker\"",
-      "\"Te because corrects errors\""
+      "\"Te because corrects\""
      ],
      "alt": [
-      "needs to verify sources first"
-     ]
-    },
-    {
-     "t": "X publicly praises them for catching it — and makes the rescue their own win.",
-     "w": {
-      "E": 1,
-      "F": 1
-     },
-     "b": [
-      "social-initiation",
-      "emotional-attunement"
-     ],
-     "fn": {
-      "Fe": "high",
-      "Se": "low",
-      "Te": "low",
-      "Fi": "moderate"
-     },
-     "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"Fe because kind or caring\""
-     ],
-     "alt": [
-      "mentor instincts took over"
+      "verify, then concede"
      ]
     }
    ],
@@ -5730,7 +5648,11 @@
     "facet": "agreeableness-compliance",
     "strength": "moderate"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 56,
@@ -5738,90 +5660,81 @@
    "q": "A neighbor asks X for the same small favor for the twelfth time. It has never once gone the other way.",
    "opts": [
     {
-     "t": "X does it again and says nothing.",
+     "t": "X does it again and says nothing. Harmony over scoreboards; that's the whole philosophy.",
      "w": {
-      "F": 1,
-      "I": 1
+      "F": 1
      },
      "b": [
       "harmony-protection",
-      "solitude-preference"
+      "prosocial-action"
      ],
      "fn": {
       "Fe": "high",
+      "Fi": "low"
+     },
+     "dni": [
+      "\"Fe because peacekeeper\"",
+      "\"Fe because generous\""
+     ],
+     "alt": [
+      "it takes two minutes"
+     ]
+    },
+    {
+     "t": "X does it — then asks the neighbor for something small next week. Balance must exist somewhere.",
+     "w": {
+      "T": 1
+     },
+     "b": [
+      "efficiency-prioritization",
+      "systematic-comparison"
+     ],
+     "fn": {
+      "Te": "moderate",
+      "Ti": "moderate"
+     },
+     "dni": [
+      "\"Te because efficient\"",
+      "\"Te because spreadsheet\""
+     ],
+     "alt": [
+      "the ledger rebalances"
+     ]
+    },
+    {
+     "t": "X would love to, but no. X rehearses the sentence in the mirror first. Twice.",
+     "w": {
+      "I": 1
+     },
+     "b": [
+      "solitude-preference",
+      "discomfort-avoidance"
+     ],
+     "fn": {
       "Fi": "low",
       "Ti": "low",
       "Ni": "low"
      },
      "dni": [
-      "\"Fe because peacekeeper\"",
-      "\"Fi/Ti/Ni because they enjoy being alone\""
+      "\"Fi/Ti/Ni because alone\"",
+      "\"not diagnostic\""
      ],
      "alt": [
-      "it takes two minutes",
-      "avoids the awkwardness"
+      "the mirror rehearsal"
      ]
     },
     {
-     "t": "X does it — then asks them for something small next week. Balance must exist.",
-     "w": {
-      "E": 1,
-      "T": 1
-     },
+     "t": "X sends a warm voice note explaining their boundaries, with a joke to land it softly.",
+     "w": {},
      "b": [
-      "social-initiation",
-      "efficiency-prioritization"
-     ],
-     "fn": {
-      "Fe": "moderate",
-      "Se": "low",
-      "Te": "moderate"
-     },
-     "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"Te because efficient\""
-     ],
-     "alt": [
-      "quid pro quo is healthy"
-     ]
-    },
-    {
-     "t": "X would love to, but no. X practices the sentence in the mirror first.",
-     "w": {
-      "I": 1
-     },
-     "b": [
-      "discomfort-avoidance"
+      "non-diagnostic"
      ],
      "fn": {},
      "dni": [
-      "\"I or Fe because avoids\" (avoidance is not diagnostic of either)"
+      "NOTHING may be inferred from this option alone"
      ],
      "alt": [
-      "conflict-avoidant from past experience"
-     ]
-    },
-    {
-     "t": "X sends a voice note explaining their boundaries, warmly.",
-     "w": {
-      "F": 1
-     },
-     "b": [
-      "emotional-attunement",
-      "blunt-directness"
-     ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "moderate",
-      "Te": "moderate",
-      "Ti": "moderate"
-     },
-     "dni": [
-      "\"Fe because kind or caring\"",
-      "\"T because blunt\" (weak; many blunt people are not T)"
-     ],
-     "alt": [
-      "voice notes are X's love language"
+      "the boundary, upholstered"
      ]
     }
    ],
@@ -5829,15 +5742,19 @@
     "facet": "agreeableness-compliance",
     "strength": "strong"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 57,
    "cat": "planning",
-   "q": "Guests arrive in 20 minutes. Nothing is ready.",
+   "q": "Guests arrive in twenty minutes. Nothing is ready.",
    "opts": [
     {
-     "t": "X has a timeline in their head. Everything will land on the minute.",
+     "t": "X has a timeline in their head. Everything lands on the minute; the doorbell is part of the choreography.",
      "w": {
       "J": 1
      },
@@ -5850,80 +5767,74 @@
       "Si": "high"
      },
      "dni": [
-      "\"Te or J because organized\"",
-      "\"Si or J because prepared\""
+      "\"Te/J because organized\"",
+      "\"Si/J because prepared\""
      ],
      "alt": [
-      "hosts every week"
+      "the choreography"
      ]
     },
     {
-     "t": "X cleans only what the guests will actually see.",
+     "t": "X opens the wine first. The guests can wait five minutes; the wine cannot wait at all.",
      "w": {
-      "S": 1,
       "P": 1
      },
      "b": [
+      "impulse-follow",
+      "present-moment-focus"
+     ],
+     "fn": {
+      "Se": "moderate",
+      "Ne": "low",
+      "Si": "moderate"
+     },
+     "dni": [
+      "\"Se because impulsive\" (function LOW)",
+      "\"Se because present\""
+     ],
+     "alt": [
+      "the wine was the plan"
+     ]
+    },
+    {
+     "t": "X cleans only what guests will actually see. Strategic brilliance under pressure.",
+     "w": {
+      "S": 1
+     },
+     "b": [
       "detail-grounded",
-      "flexibility-tolerance"
+      "efficiency-prioritization"
      ],
      "fn": {
       "Si": "moderate",
       "Se": "moderate",
-      "Ne": "low"
+      "Te": "moderate"
      },
      "dni": [
       "\"S because concrete\"",
-      "\"P because flexible\" (axis evidence yes; function evidence weak)"
+      "\"Te because efficient\""
      ],
      "alt": [
-      "the guests are close friends"
+      "the visible only"
      ]
     },
     {
-     "t": "X starts cooking an ambitious new dish anyway.",
+     "t": "X starts an ambitious new recipe anyway. Ambition beats timing, always.",
      "w": {
-      "P": 1,
       "N": 1
      },
      "b": [
-      "impulse-follow",
       "possibility-exploration"
      ],
      "fn": {
-      "Se": "low",
-      "Ne": "high"
+      "Ne": "high",
+      "Se": "low"
      },
      "dni": [
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)",
-      "\"Ne because the option is imaginative\""
+      "\"Ne because imaginative\""
      ],
      "alt": [
-      "ambition beats timing, every time"
-     ]
-    },
-    {
-     "t": "X opens the wine first. The guests can wait five minutes.",
-     "w": {
-      "F": 1,
-      "P": 1
-     },
-     "b": [
-      "harmony-protection",
-      "impulse-follow"
-     ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "low",
-      "Se": "low",
-      "Ne": "low"
-     },
-     "dni": [
-      "\"Fe because peacekeeper\"",
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)"
-     ],
-     "alt": [
-      "the wine WAS the plan"
+      "the soufflé gambit"
      ]
     }
    ],
@@ -5931,7 +5842,11 @@
     "facet": "conscientiousness-order",
     "strength": "moderate"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 58,
@@ -5939,97 +5854,80 @@
    "q": "X is invited to two events the same night. Both hosts matter to X.",
    "opts": [
     {
-     "t": "X picks one and gives the other a clean, honest no.",
+     "t": "X picks one and gives the other a clean, honest no. Half-presences help nobody.",
      "w": {
-      "T": 1,
       "J": 1
      },
      "b": [
-      "deliberative-processing",
+      "systematic-execution",
       "blunt-directness"
      ],
      "fn": {
-      "Ti": "moderate",
-      "Ni": "low",
-      "Te": "moderate"
+      "Te": "high",
+      "Si": "moderate",
+      "Ti": "moderate"
      },
      "dni": [
-      "\"Ti/Ni because thinks a lot\"",
-      "\"T because blunt\" (weak; many blunt people are not T)"
+      "\"Te/J because organized\"",
+      "\"T because blunt\" (weak)"
      ],
      "alt": [
-      "honesty is house policy"
+      "the clean no"
      ]
     },
     {
-     "t": "X attends both, half of each, and enjoys neither.",
+     "t": "X attends both, half of each, and enjoys neither. FOMO is a tax and X pays it gladly.",
      "w": {
-      "E": 1,
       "P": 1
      },
      "b": [
-      "social-initiation",
-      "flexibility-tolerance"
+      "flexibility-tolerance",
+      "impulse-follow"
+     ],
+     "fn": {
+      "Ne": "low",
+      "Se": "low"
+     },
+     "dni": [
+      "\"P because flexible\" (axis yes; function weak)",
+      "\"Se because impulsive\" (function LOW)"
+     ],
+     "alt": [
+      "the FOMO tax"
+     ]
+    },
+    {
+     "t": "X invents a work excuse for one and feels bad about it for days. The guilt is the RSVP.",
+     "w": {},
+     "b": [
+      "non-diagnostic"
+     ],
+     "fn": {},
+     "dni": [
+      "NOTHING may be inferred from this option alone"
+     ],
+     "alt": [
+      "the guilt, itemized"
+     ]
+    },
+    {
+     "t": "X proposes moving one of the events. Everything is negotiable; the hosts love X anyway.",
+     "w": {
+      "E": 1
+     },
+     "b": [
+      "social-initiation"
      ],
      "fn": {
       "Fe": "moderate",
       "Se": "low",
-      "Te": "low",
-      "Ne": "low"
+      "Te": "low"
      },
      "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"P because flexible\" (axis evidence yes; function evidence weak)"
+      "\"E because seeks people\" (E-axis evidence, not function proof)"
      ],
      "alt": [
-      "FOMO is a medical condition"
-     ]
-    },
-    {
-     "t": "X invents a work excuse for one and feels bad about it for days.",
-     "w": {
-      "F": 1,
-      "N": 1
-     },
-     "b": [
-      "harmony-protection",
-      "meaning-interpretation"
-     ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "low",
-      "Ni": "moderate",
-      "Ne": "moderate"
-     },
-     "dni": [
-      "\"Fe because peacekeeper\"",
-      "\"Ni because it seeks meaning\""
-     ],
-     "alt": [
-      "cannot handle disappointing people"
-     ]
-    },
-    {
-     "t": "X proposes moving one of the events. Everything is negotiable.",
-     "w": {
-      "E": 1,
-      "T": 1
-     },
-     "b": [
-      "social-initiation",
-      "instrumental-valuation"
-     ],
-     "fn": {
-      "Fe": "moderate",
-      "Se": "low",
-      "Te": "moderate"
-     },
-     "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"Te because business-minded\""
-     ],
-     "alt": [
-      "has moved events before; it works"
+      "the reschedule"
      ]
     }
    ],
@@ -6037,18 +5935,21 @@
     "facet": "agreeableness-compliance",
     "strength": "moderate"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 59,
    "cat": "work",
-   "q": "A project task is unassigned. Everyone seems to assume someone else has it. The deadline is approaching.",
+   "q": "A project task is unassigned. Everyone assumes someone else has it. The deadline approaches.",
    "opts": [
     {
-     "t": "X takes it silently and tells no one.",
+     "t": "X takes it silently and tells no one. The task matters more than the credit.",
      "w": {
-      "I": 1,
-      "J": 1
+      "I": 1
      },
      "b": [
       "solitude-preference",
@@ -6062,83 +5963,67 @@
       "Si": "moderate"
      },
      "dni": [
-      "\"Fi/Ti/Ni because they enjoy being alone\"",
-      "\"Te or J because organized\""
+      "\"Fi/Ti/Ni because alone\"",
+      "\"Te/J because organized\""
      ],
      "alt": [
-      "it's small",
-      "ownership was unclear anyway"
+      "the quiet rescue"
      ]
     },
     {
-     "t": "X sends “who owns this?” to the whole channel.",
+     "t": "X asks the whole channel: 'who owns this?' Silence is also an answer.",
      "w": {
-      "T": 1,
       "E": 1
      },
      "b": [
-      "blunt-directness",
-      "social-information-sharing"
-     ],
-     "fn": {
-      "Te": "moderate",
-      "Ti": "moderate",
-      "Fe": "low"
-     },
-     "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)",
-      "\"Fe because shares news\""
-     ],
-     "alt": [
-      "channel hygiene matters to X"
-     ]
-    },
-    {
-     "t": "X takes it and announces it loudly, with a deadline.",
-     "w": {
-      "E": 1,
-      "J": 1
-     },
-     "b": [
       "social-initiation",
-      "systematic-execution"
+      "blunt-directness"
      ],
      "fn": {
       "Fe": "moderate",
       "Se": "low",
+      "Te": "moderate",
+      "Ti": "moderate"
+     },
+     "dni": [
+      "\"E because seeks people\" (E-axis evidence, not function proof)",
+      "\"T because blunt\" (weak)"
+     ],
+     "alt": [
+      "the channel must know"
+     ]
+    },
+    {
+     "t": "X takes it and announces it loudly, with a deadline. Rescue operations deserve flags.",
+     "w": {
+      "J": 1
+     },
+     "b": [
+      "systematic-execution"
+     ],
+     "fn": {
       "Te": "high",
       "Si": "moderate"
      },
      "dni": [
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)",
-      "\"Te or J because organized\""
+      "\"Te/J because organized\""
      ],
      "alt": [
-      "rescue missions deserve credit"
+      "the flag-planting"
      ]
     },
     {
      "t": "X lets it smolder a little longer. Maybe then the priorities will reveal themselves.",
-     "w": {
-      "P": 1,
-      "N": 1
-     },
+     "w": {},
      "b": [
-      "flexibility-tolerance",
-      "meaning-interpretation"
+      "non-diagnostic"
      ],
-     "fn": {
-      "Ne": "moderate",
-      "Se": "low",
-      "Ni": "moderate",
-      "Fi": "low"
-     },
+     "fn": {},
      "dni": [
-      "\"P because flexible\" (axis evidence yes; function evidence weak)",
-      "\"Ni because it seeks meaning\""
+      "NOTHING may be inferred from this option alone"
      ],
      "alt": [
-      "the task might not even matter"
+      "the controlled burn"
      ]
     }
    ],
@@ -6146,7 +6031,11 @@
     "facet": "conscientiousness-dutifulness",
     "strength": "moderate"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 60,
@@ -6154,79 +6043,65 @@
    "q": "A friend returns something they borrowed from X — damaged. They don't mention it.",
    "opts": [
     {
-     "t": "“No worries!” X never lends them anything again. Silently.",
+     "t": "'No worries!' X says, and never lends to them again. Silently. The policy is the friendship.",
      "w": {
-      "F": 1,
-      "I": 1
+      "F": 1
      },
      "b": [
       "harmony-protection",
-      "solitude-preference"
+      "values-driven-choice"
      ],
      "fn": {
       "Fe": "high",
-      "Fi": "low",
-      "Ti": "low",
-      "Ni": "low"
+      "Fi": "high"
      },
      "dni": [
       "\"Fe because peacekeeper\"",
-      "\"Fi/Ti/Ni because they enjoy being alone\""
+      "\"Fi because principled\""
      ],
      "alt": [
-      "the thing was old anyway"
+      "the quiet policy"
      ]
     },
     {
-     "t": "X points it out on the spot. They should know.",
+     "t": "X points it out on the spot, kindly. They should know; that's what friends are for.",
      "w": {
       "T": 1
      },
      "b": [
-      "blunt-directness",
-      "error-correction"
+      "error-correction",
+      "blunt-directness"
      ],
      "fn": {
       "Te": "moderate",
       "Ti": "moderate"
      },
      "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)",
-      "\"Te because corrects errors\""
+      "\"Te because corrects\"",
+      "\"T because blunt\" (weak)"
      ],
      "alt": [
-      "it was expensive"
+      "the kind accounting"
      ]
     },
     {
-     "t": "X brings it up next time they need to borrow something.",
-     "w": {
-      "F": 1,
-      "E": 1
-     },
+     "t": "X brings it up the next time they need to borrow something. Timing is a teacher.",
+     "w": {},
      "b": [
-      "emotional-attunement",
-      "social-initiation"
+      "non-diagnostic"
      ],
-     "fn": {
-      "Fe": "high",
-      "Fi": "moderate",
-      "Se": "low",
-      "Te": "low"
-     },
+     "fn": {},
      "dni": [
-      "\"Fe because kind or caring\"",
-      "\"a specific function because they seek people\" (E-axis evidence, not function proof)"
+      "NOTHING may be inferred from this option alone"
      ],
      "alt": [
-      "jokes soften everything"
+      "the deferred lesson"
      ]
     },
     {
-     "t": "X repairs it themselves, says nothing, keeps a private ledger.",
+     "t": "X repairs it themselves, says nothing, and keeps a private ledger of everything. The ledger is long.",
      "w": {
-      "I": 1,
-      "J": 1
+      "I": 1
      },
      "b": [
       "private-documentation",
@@ -6239,11 +6114,11 @@
       "Ni": "low"
      },
      "dni": [
-      "\"Si because keeps records\"",
-      "\"Fi/Ti/Ni because they enjoy being alone\""
+      "\"Si because records\"",
+      "\"Fi/Ti/Ni because alone\""
      ],
      "alt": [
-      "fixes things anyway; it's a hobby"
+      "the repair, silent"
      ]
     }
    ],
@@ -6251,7 +6126,11 @@
     "facet": "agreeableness-forgiveness/trust",
     "strength": "strong"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 61,
@@ -6259,7 +6138,7 @@
    "q": "X's browser, right now:",
    "opts": [
     {
-     "t": "30+ tabs open. All important. None will ever close. The tab bar is a diary X pretends is a to-do list.",
+     "t": "Thirty-plus tabs. All important. None ever closed. The tab bar is a diary X pretends is a to-do list.",
      "w": {
       "P": 1
      },
@@ -6272,11 +6151,11 @@
       "Ne": "low"
      },
      "dni": [
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)",
-      "\"P because flexible\" (axis evidence yes; function evidence weak)"
+      "\"Se because impulsive\" (function LOW)",
+      "\"P because flexible\" (axis yes; function weak)"
      ],
      "alt": [
-      "every tab is a real project, allegedly"
+      "every tab is a project"
      ]
     },
     {
@@ -6285,24 +6164,25 @@
       "J": 1
      },
      "b": [
-      "systematic-execution"
+      "systematic-execution",
+      "efficiency-prioritization"
      ],
      "fn": {
       "Te": "high",
       "Si": "moderate"
      },
      "dni": [
-      "\"Te or J because organized\""
+      "\"Te/J because organized\"",
+      "\"Te because efficient\""
      ],
      "alt": [
-      "learned it from a very tired developer"
+      "the tool discipline"
      ]
     },
     {
-     "t": "One tab, one clean window. Everything else goes to a bookmarks folder that has never been reopened. Archived means handled.",
+     "t": "One tab, one clean window. Everything else goes to a bookmarks folder that has never been reopened.",
      "w": {
-      "I": 1,
-      "S": 1
+      "I": 1
      },
      "b": [
       "solitude-preference",
@@ -6316,15 +6196,15 @@
       "Te": "low"
      },
      "dni": [
-      "\"Fi/Ti/Ni because they enjoy being alone\"",
-      "\"Si because likes routine\""
+      "\"Fi/Ti/Ni because alone\"",
+      "\"Si because routine\""
      ],
      "alt": [
-      "the bookmarks folder has 4,000 entries"
+      "the archive of intentions"
      ]
     },
     {
-     "t": "Tabs die only when the laptop restarts. X can reconstruct the entire week from the tab bar — it is a memory palace.",
+     "t": "Tabs die only when the laptop restarts. X can reconstruct the whole week from the tab bar — it's a memory palace.",
      "w": {
       "S": 1
      },
@@ -6344,7 +6224,7 @@
       "\"Ni because abstract\""
      ],
      "alt": [
-      "once found a citation from 2021 in tab 34"
+      "tab 34 has the citation"
      ]
     }
    ],
@@ -6352,7 +6232,11 @@
     "facet": "conscientiousness-order",
     "strength": "strong"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 62,
@@ -6360,27 +6244,26 @@
    "q": "X's personal inbox:",
    "opts": [
     {
-     "t": "Unread: a four-digit number. X finds everything by search and pure intuition. Nobody can prove the system doesn't work.",
+     "t": "Unread: a four-digit number. X finds everything by search and intuition. Nobody can prove the system doesn't work.",
      "w": {
-      "P": 1,
-      "N": 1
+      "P": 1
      },
      "b": [
-      "impulse-follow",
+      "flexibility-tolerance",
       "pattern-abstraction"
      ],
      "fn": {
-      "Se": "low",
       "Ne": "moderate",
+      "Se": "low",
       "Ni": "moderate",
       "Ti": "moderate"
      },
      "dni": [
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)",
+      "\"P because flexible\" (axis yes; function weak)",
       "\"Ni because abstract\""
      ],
      "alt": [
-      "search genuinely works"
+      "search is the system"
      ]
     },
     {
@@ -6389,64 +6272,61 @@
       "J": 1
      },
      "b": [
-      "systematic-execution"
+      "systematic-execution",
+      "preparation-driven"
      ],
      "fn": {
       "Te": "high",
-      "Si": "moderate"
+      "Si": "high"
      },
      "dni": [
-      "\"Te or J because organized\""
+      "\"Te/J because organized\"",
+      "\"Si/J because prepared\""
      ],
      "alt": [
-      "the 24-hour rule again"
+      "the daily ritual"
      ]
     },
     {
      "t": "Reads everything, answers almost nothing. If it were important, they would call.",
      "w": {
-      "T": 1,
-      "S": 1
+      "T": 1
      },
      "b": [
-      "blunt-directness",
-      "detail-grounded"
+      "efficiency-prioritization",
+      "blunt-directness"
      ],
      "fn": {
       "Te": "moderate",
-      "Ti": "moderate",
+      "Ti": "moderate"
+     },
+     "dni": [
+      "\"Te because efficient\"",
+      "\"T because blunt\" (weak)"
+     ],
+     "alt": [
+      "calls only, since 2015"
+     ]
+    },
+    {
+     "t": "Forty-seven folders, twelve filters, color-coded. The inbox is an archive that occasionally receives mail.",
+     "w": {
+      "S": 1
+     },
+     "b": [
+      "detail-grounded",
+      "private-documentation"
+     ],
+     "fn": {
       "Si": "moderate",
       "Se": "moderate"
      },
      "dni": [
-      "\"T because blunt\" (weak; many blunt people are not T)",
-      "\"S because concrete\""
-     ],
-     "alt": [
-      "phone-call supremacy since 2015"
-     ]
-    },
-    {
-     "t": "47 folders, 12 filters, color-coded labels. The inbox is an archive that occasionally receives mail.",
-     "w": {
-      "S": 1,
-      "J": 1
-     },
-     "b": [
-      "detail-grounded",
-      "systematic-execution"
-     ],
-     "fn": {
-      "Si": "moderate",
-      "Se": "moderate",
-      "Te": "high"
-     },
-     "dni": [
       "\"S because concrete\"",
-      "\"Te or J because organized\""
+      "\"Si because records\""
      ],
      "alt": [
-      "used to be an office manager"
+      "the filing cabinet"
      ]
     }
    ],
@@ -6454,7 +6334,11 @@
     "facet": "conscientiousness-order",
     "strength": "strong"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 63,
@@ -6462,10 +6346,9 @@
    "q": "X opens the stationery drawer at work:",
    "opts": [
     {
-     "t": "Everything has a labeled compartment. The paperclips have a home. The rubber bands have a DIFFERENT home. This is not negotiable.",
+     "t": "Everything has a labeled compartment. The paperclips have a home. The rubber bands have a DIFFERENT home. Non-negotiable.",
      "w": {
-      "J": 1,
-      "S": 1
+      "J": 1
      },
      "b": [
       "systematic-execution",
@@ -6477,27 +6360,29 @@
       "Se": "moderate"
      },
      "dni": [
-      "\"Te or J because organized\"",
+      "\"Te/J because organized\"",
       "\"S because concrete\""
      ],
      "alt": [
-      "grew up in a workshop"
+      "the taxonomy"
      ]
     },
     {
-     "t": "One drawer, everything loose, one pair of scissors somewhere at the bottom. X can find anything blindfolded. Allegedly.",
+     "t": "One drawer, everything loose, one mythical pair of scissors somewhere at the bottom. X can find anything blindfolded. Allegedly.",
      "w": {
       "P": 1
      },
      "b": [
+      "flexibility-tolerance",
       "impulse-follow"
      ],
      "fn": {
-      "Se": "low",
-      "Ne": "low"
+      "Ne": "low",
+      "Se": "low"
      },
      "dni": [
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)"
+      "\"P because flexible\" (axis yes; function weak)",
+      "\"Se because impulsive\" (function LOW)"
      ],
      "alt": [
       "the scissors are mythical"
@@ -6506,8 +6391,7 @@
     {
      "t": "X buys a replacement rather than search. The drawer is a black hole with a budget.",
      "w": {
-      "P": 1,
-      "T": 1
+      "P": 1
      },
      "b": [
       "impulse-follow",
@@ -6519,15 +6403,15 @@
       "Te": "moderate"
      },
      "dni": [
-      "\"Se because impulsive\" (function evidence LOW; axis P evidence yes)",
+      "\"Se because impulsive\" (function LOW)",
       "\"Te because efficient\""
      ],
      "alt": [
-      "stationery budget: real"
+      "the stationery budget"
      ]
     },
     {
-     "t": "Nothing in drawers. Everything lives on the desk, ordered by frequency of use, like a cockpit. Visitors are asked not to touch the configuration.",
+     "t": "Nothing in drawers. Everything on the desk, ordered by frequency of use, like a cockpit. Visitors are asked not to touch the configuration.",
      "w": {
       "J": 1
      },
@@ -6542,11 +6426,11 @@
       "Fe": "low"
      },
      "dni": [
-      "\"Te or J because organized\"",
+      "\"Te/J because organized\"",
       "\"Fi because principled\""
      ],
      "alt": [
-      "the cockpit survives audits"
+      "the cockpit"
      ]
     }
    ],
@@ -6554,7 +6438,11 @@
     "facet": "conscientiousness-order",
     "strength": "strong"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 64,
@@ -6590,7 +6478,7 @@
      ]
     },
     {
-     "t": "X counts heads on the way out — who’s missing, who looked stressed this morning, who needs a check-in. The people, catalogued with care.",
+     "t": "X counts heads on the way out — who is where, who hasn't checked in, where the group stands.",
      "w": {
       "N": 1,
       "F": 1
@@ -6634,7 +6522,7 @@
      ]
     },
     {
-     "t": "X keeps the group together outside, starts the roll-call joke tradition, makes sure nobody stands alone. Ten minutes of community.",
+     "t": "X keeps the group together outside: roll call, jokes, the ten minutes pass fast.",
      "w": {
       "S": 1,
       "F": 1
@@ -6660,7 +6548,12 @@
     "facet": "stress-coping orientation (problem-focused vs social-support seeking; Lazarus & Folkman)",
     "strength": "partial-analogue"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "family_attention"
+   ],
+   "contrast": "NT_NF_ST_SF",
+   "layer": "family_probe"
   },
   {
    "id": 65,
@@ -6696,7 +6589,7 @@
      ]
     },
     {
-     "t": "The people: who’s spiraling, who needs a task, who needs a word. A frightened team fixes nothing.",
+     "t": "X checks the team's state: who needs a task, who needs a word. A scattered team fixes nothing.",
      "w": {
       "N": 1,
       "F": 1
@@ -6742,7 +6635,7 @@
      ]
     },
     {
-     "t": "The human impact: who’s affected, what they need to know, how to keep trust intact while it’s fixed.",
+     "t": "X works out what people need to know and who tells them — the comms are part of the fix.",
      "w": {
       "S": 1,
       "F": 1
@@ -6768,7 +6661,12 @@
     "facet": "stress-coping orientation (problem-focused vs social-support seeking; Lazarus & Folkman)",
     "strength": "partial-analogue"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "family_attention"
+   ],
+   "contrast": "NT_NF_ST_SF",
+   "layer": "family_probe"
   },
   {
    "id": 66,
@@ -6876,7 +6774,12 @@
     "facet": "resource-allocation orientation (instrumental vs prosocial; agreeableness/altruism literature)",
     "strength": "partial-analogue"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "family_attention"
+   ],
+   "contrast": "NT_NF_ST_SF",
+   "layer": "family_probe"
   },
   {
    "id": 67,
@@ -6962,7 +6865,12 @@
    },
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "SeNi-2"
+   "pair": "SeNi-2",
+   "contrast": "Ni_Ne",
+   "layer": "function_duel",
+   "signal": [
+    "preferred_information"
+   ]
   },
   {
    "id": 68,
@@ -7046,7 +6954,12 @@
     "facet": "convergent vs divergent thinking (Guilford 1956); latency of verbalization vs reflection",
     "strength": "partial-analogue"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "Ni_Ne",
+   "layer": "function_duel",
+   "signal": [
+    "preferred_information"
+   ]
   },
   {
    "id": 69,
@@ -7134,7 +7047,12 @@
    },
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "TiTe-1"
+   "pair": "TiTe-1",
+   "contrast": "Ti_Te",
+   "layer": "function_duel",
+   "signal": [
+    "decision_criteria"
+   ]
   },
   {
    "id": 70,
@@ -7222,7 +7140,12 @@
    },
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "TiTe-2"
+   "pair": "TiTe-2",
+   "contrast": "Ti_Te",
+   "layer": "function_duel",
+   "signal": [
+    "decision_criteria"
+   ]
   },
   {
    "id": 71,
@@ -7254,7 +7177,7 @@
      ]
     },
     {
-     "t": "X reads where the friend is right now, and calibrates: the truth, adjusted so it can actually be heard. The relationship is the medium.",
+     "t": "X reads where the friend is and frames it so the answer can actually land, wherever they are.",
      "w": {
       "F": 1
      },
@@ -7308,7 +7231,12 @@
    },
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "FiFe-1"
+   "pair": "FiFe-1",
+   "contrast": "Fi_Fe",
+   "layer": "function_duel",
+   "signal": [
+    "decision_criteria"
+   ]
   },
   {
    "id": 72,
@@ -7338,7 +7266,7 @@
      ]
     },
     {
-     "t": "X weighs how the answer lands on the people it touches — the affected are part of the answer, like it or not.",
+     "t": "X weighs how the answer lands on the people it touches — the affected are part of the answer.",
      "w": {
       "F": 1
      },
@@ -7392,7 +7320,12 @@
    },
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "FiFe-2"
+   "pair": "FiFe-2",
+   "contrast": "Fi_Fe",
+   "layer": "function_duel",
+   "signal": [
+    "decision_criteria"
+   ]
   },
   {
    "id": 73,
@@ -7480,7 +7413,12 @@
    },
    "status": "uncalibrated",
    "typing_route": true,
-   "pair": "SeNi-1"
+   "pair": "SeNi-1",
+   "contrast": "Si_Se",
+   "layer": "function_duel",
+   "signal": [
+    "preferred_information"
+   ]
   },
   {
    "id": 74,
@@ -7566,7 +7504,12 @@
     "facet": "hands-on active experimentation (Kolb accommodator) vs sensation seeking (Zuckerman)",
     "strength": "partial-analogue"
    },
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "contrast": "Si_Se",
+   "layer": "function_duel",
+   "signal": [
+    "preferred_information"
+   ]
   },
   {
    "id": 75,
@@ -7616,9 +7559,7 @@
     },
     {
      "t": "X joins the biggest group and introduces themselves twice because names don't stick the first time.",
-     "w": {
-      "E": 1
-     },
+     "w": {},
      "b": [
       "social-initiation"
      ],
@@ -7636,9 +7577,7 @@
     },
     {
      "t": "X helps with the dishes in the back. Contribution without networking.",
-     "w": {
-      "I": 1
-     },
+     "w": {},
      "b": [
       "solitude-preference"
      ],
@@ -7655,7 +7594,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 76,
@@ -7705,9 +7648,7 @@
     },
     {
      "t": "X grabs food for the road. Parties end; snacks are forever.",
-     "w": {
-      "S": 1
-     },
+     "w": {},
      "b": [
       "detail-grounded"
      ],
@@ -7724,9 +7665,7 @@
     },
     {
      "t": "X already scheduled tomorrow's debrief brunch. The night continues administratively.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution"
      ],
@@ -7742,7 +7681,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 77,
@@ -7792,9 +7735,7 @@
     },
     {
      "t": "X circulates a doc after the meeting — ideas, attributed, timestamped.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution",
       "private-documentation"
@@ -7813,9 +7754,7 @@
     },
     {
      "t": "X sketches the idea on a napkin that will never be seen again. It was perfect there.",
-     "w": {
-      "P": 1
-     },
+     "w": {},
      "b": [
       "impulse-follow"
      ],
@@ -7831,7 +7770,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 78,
@@ -7884,9 +7827,7 @@
     },
     {
      "t": "X replays the week's conversations in the shower, analyzing.",
-     "w": {
-      "N": 1
-     },
+     "w": {},
      "b": [
       "pattern-abstraction"
      ],
@@ -7904,10 +7845,7 @@
     },
     {
      "t": "X meal-preps in advance so the recovery evening is pure, uninterrupted nothing.",
-     "w": {
-      "J": 1,
-      "S": 1
-     },
+     "w": {},
      "b": [
       "preparation-driven",
       "detail-grounded"
@@ -7926,7 +7864,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 79,
@@ -7977,9 +7919,7 @@
     },
     {
      "t": "X notices which passengers need help with their bags before anyone asks.",
-     "w": {
-      "F": 1
-     },
+     "w": {},
      "b": [
       "emotional-attunement"
      ],
@@ -7996,9 +7936,7 @@
     },
     {
      "t": "X has the timetable memorized and silently corrects the delay announcements.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "routine-anchored"
      ],
@@ -8014,7 +7952,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 80,
@@ -8070,9 +8012,7 @@
     },
     {
      "t": "X researches options and sends three concrete referrals. Practical love.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution"
      ],
@@ -8089,10 +8029,7 @@
     },
     {
      "t": "X shows up with the friend's favorite food. No words required.",
-     "w": {
-      "S": 1,
-      "F": 1
-     },
+     "w": {},
      "b": [
       "detail-grounded",
       "emotional-attunement"
@@ -8112,7 +8049,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "social_energy"
+   ],
+   "contrast": "E_I"
   },
   {
    "id": 81,
@@ -8166,9 +8107,7 @@
     },
     {
      "t": "X keeps the queue organized by topic and mood. Two axes of order.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution"
      ],
@@ -8185,9 +8124,7 @@
     },
     {
      "t": "X falls asleep to whatever was already playing. The queue is theoretical.",
-     "w": {
-      "P": 1
-     },
+     "w": {},
      "b": [
       "flexibility-tolerance"
      ],
@@ -8203,7 +8140,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "preferred_information"
+   ],
+   "contrast": "S_N"
   },
   {
    "id": 82,
@@ -8258,9 +8199,7 @@
     },
     {
      "t": "X plans the daydream like a project, with milestones.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution"
      ],
@@ -8277,9 +8216,7 @@
     },
     {
      "t": "X's daydreams star real people in invented situations. Casting is automatic.",
-     "w": {
-      "F": 1
-     },
+     "w": {},
      "b": [
       "emotional-attunement"
      ],
@@ -8295,7 +8232,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "preferred_information"
+   ],
+   "contrast": "S_N"
   },
   {
    "id": 83,
@@ -8347,9 +8288,7 @@
     },
     {
      "t": "X finds the best seat and settles in for professional people-watching.",
-     "w": {
-      "E": 1
-     },
+     "w": {},
      "b": [
       "stimulation-seeking"
      ],
@@ -8366,10 +8305,7 @@
     },
     {
      "t": "X silently rearranges the chairs so the group faces each other better.",
-     "w": {
-      "J": 1,
-      "F": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution",
       "emotional-attunement"
@@ -8389,7 +8325,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "preferred_information"
+   ],
+   "contrast": "S_N"
   },
   {
    "id": 84,
@@ -8441,9 +8381,7 @@
     },
     {
      "t": "X asks who owns the next step and when it's due.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution"
      ],
@@ -8460,10 +8398,7 @@
     },
     {
      "t": "X asks how everyone is feeling about what happened.",
-     "w": {
-      "F": 1,
-      "E": 1
-     },
+     "w": {},
      "b": [
       "emotional-attunement"
      ],
@@ -8479,7 +8414,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "preferred_information"
+   ],
+   "contrast": "S_N"
   },
   {
    "id": 85,
@@ -8532,9 +8471,7 @@
     },
     {
      "t": "X reads the changelog first. All of it, including the known issues.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "detail-grounded"
      ],
@@ -8551,9 +8488,7 @@
     },
     {
      "t": "X asks the most enthusiastic colleague for a demo over coffee.",
-     "w": {
-      "E": 1
-     },
+     "w": {},
      "b": [
       "social-initiation"
      ],
@@ -8570,7 +8505,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "preferred_information"
+   ],
+   "contrast": "S_N"
   },
   {
    "id": 86,
@@ -8622,9 +8561,7 @@
     },
     {
      "t": "X draws it as a diagram. Boxes, arrows, no lighthouse.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution"
      ],
@@ -8641,10 +8578,7 @@
     },
     {
      "t": "X acts it out with improvised props until it lands.",
-     "w": {
-      "E": 1,
-      "P": 1
-     },
+     "w": {},
      "b": [
       "social-initiation",
       "impulse-follow"
@@ -8664,7 +8598,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "preferred_information"
+   ],
+   "contrast": "S_N"
   },
   {
    "id": 87,
@@ -8716,9 +8654,7 @@
     },
     {
      "t": "X builds a scoring sheet for both and lets the sum speak.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "systematic-comparison"
      ],
@@ -8733,9 +8669,7 @@
     },
     {
      "t": "X sleeps on it and decides at breakfast, unhurried.",
-     "w": {
-      "P": 1
-     },
+     "w": {},
      "b": [
       "flexibility-tolerance"
      ],
@@ -8751,7 +8685,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 88,
@@ -8781,7 +8719,7 @@
      ]
     },
     {
-     "t": "X documents it and flags the process gap — kindness is not hiding errors.",
+     "t": "X documents it and flags the process gap — covering it helps no one, least of all the next colleague.",
      "w": {
       "T": 1
      },
@@ -8803,10 +8741,7 @@
     },
     {
      "t": "X fixes it silently and logs it in the shared wiki. Anonymous.",
-     "w": {
-      "J": 1,
-      "I": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution",
       "private-documentation"
@@ -8825,9 +8760,7 @@
     },
     {
      "t": "X takes the colleague for coffee and lets them bring it up first.",
-     "w": {
-      "E": 1
-     },
+     "w": {},
      "b": [
       "social-initiation"
      ],
@@ -8844,7 +8777,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 89,
@@ -8898,9 +8835,7 @@
     },
     {
      "t": "X records a voice note — tone intact, content complete.",
-     "w": {
-      "E": 1
-     },
+     "w": {},
      "b": [
       "social-initiation"
      ],
@@ -8918,10 +8853,7 @@
     },
     {
      "t": "X writes it, deletes it, writes it shorter. Five drafts.",
-     "w": {
-      "J": 1,
-      "I": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution",
       "reflective-processing"
@@ -8940,7 +8872,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 90,
@@ -8991,9 +8927,7 @@
     },
     {
      "t": "X gives it a week. Time reveals incentives better than suspicion.",
-     "w": {
-      "J": 1
-     },
+     "w": {},
      "b": [
       "deliberative-processing"
      ],
@@ -9008,9 +8942,7 @@
     },
     {
      "t": "X asks a mutual friend what they know. Quiet intelligence gathering.",
-     "w": {
-      "E": 1
-     },
+     "w": {},
      "b": [
       "social-initiation"
      ],
@@ -9027,7 +8959,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 91,
@@ -9056,7 +8992,7 @@
      ]
     },
     {
-     "t": "X avoids debating people because relationships outlast arguments.",
+     "t": "X avoids debating people over things that outlast the argument.",
      "w": {
       "F": 1
      },
@@ -9078,10 +9014,7 @@
     },
     {
      "t": "X pivots the conversation to something everyone enjoys. Evening saved.",
-     "w": {
-      "E": 1,
-      "P": 1
-     },
+     "w": {},
      "b": [
       "social-initiation",
       "flexibility-tolerance"
@@ -9102,10 +9035,7 @@
     },
     {
      "t": "X takes notes on both positions and decides later, alone.",
-     "w": {
-      "J": 1,
-      "I": 1
-     },
+     "w": {},
      "b": [
       "private-documentation",
       "reflective-processing"
@@ -9123,7 +9053,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 92,
@@ -9134,8 +9068,7 @@
     {
      "t": "What is fair to the people involved.",
      "w": {
-      "P": 1,
-      "I": 1
+      "F": 1
      },
      "b": [
       "values-driven-choice",
@@ -9176,9 +9109,7 @@
     },
     {
      "t": "X flips a coin — and checks which side feels like relief.",
-     "w": {
-      "P": 1
-     },
+     "w": {},
      "b": [
       "impulse-follow"
      ],
@@ -9195,10 +9126,7 @@
     },
     {
      "t": "X writes pros and cons longhand, then follows the longer list.",
-     "w": {
-      "J": 1,
-      "S": 1
-     },
+     "w": {},
      "b": [
       "systematic-comparison",
       "detail-grounded"
@@ -9217,7 +9145,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "decision_criteria"
+   ],
+   "contrast": "T_F"
   },
   {
    "id": 93,
@@ -9270,10 +9202,7 @@
     },
     {
      "t": "X color-codes by project AND urgency. Two dimensions of order.",
-     "w": {
-      "T": 1,
-      "N": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution",
       "pattern-abstraction"
@@ -9295,9 +9224,7 @@
     },
     {
      "t": "X names files 'final', 'final2', 'FINAL-final'. The archaeology is chronological.",
-     "w": {
-      "S": 1
-     },
+     "w": {},
      "b": [
       "detail-grounded"
      ],
@@ -9313,7 +9240,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 94,
@@ -9365,9 +9296,7 @@
     },
     {
      "t": "X knows the airport layout by heart. The buffer is strategy, not anxiety.",
-     "w": {
-      "S": 1
-     },
+     "w": {},
      "b": [
       "routine-anchored"
      ],
@@ -9384,10 +9313,7 @@
     },
     {
      "t": "X has a pre-flight ritual: same café, same order, every time.",
-     "w": {
-      "S": 1,
-      "F": 1
-     },
+     "w": {},
      "b": [
       "routine-anchored",
       "emotional-attunement"
@@ -9407,7 +9333,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 95,
@@ -9459,9 +9389,7 @@
     },
     {
      "t": "X delivers exactly on the deadline. No more, no less. Efficient.",
-     "w": {
-      "T": 1
-     },
+     "w": {},
      "b": [
       "efficiency-prioritization"
      ],
@@ -9475,9 +9403,7 @@
     },
     {
      "t": "X's best work happens at 2am, deadline night. The muse is nocturnal.",
-     "w": {
-      "N": 1
-     },
+     "w": {},
      "b": [
       "pattern-abstraction"
      ],
@@ -9494,7 +9420,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 96,
@@ -9526,7 +9456,6 @@
     {
      "t": "Decided by how the first coffee hits and what the weather suggests.",
      "w": {
-      "E": 1,
       "P": 1
      },
      "b": [
@@ -9548,9 +9477,7 @@
     },
     {
      "t": "X lays out clothes the night before, even for free days.",
-     "w": {
-      "S": 1
-     },
+     "w": {},
      "b": [
       "preparation-driven"
      ],
@@ -9567,9 +9494,7 @@
     },
     {
      "t": "X books brunch on instinct, day-of. It always works.",
-     "w": {
-      "E": 1
-     },
+     "w": {},
      "b": [
       "impulse-follow"
      ],
@@ -9585,7 +9510,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 97,
@@ -9595,10 +9524,7 @@
    "opts": [
     {
      "t": "X adds tasks already done, just to cross them out. The archive of wins matters.",
-     "w": {
-      "T": 1,
-      "I": 1
-     },
+     "w": {},
      "b": [
       "systematic-execution",
       "private-documentation"
@@ -9638,7 +9564,7 @@
     {
      "t": "X reviews every list each Friday and carries open items forward. The system breathes.",
      "w": {
-      "T": 1
+      "J": 1
      },
      "b": [
       "systematic-execution"
@@ -9656,9 +9582,7 @@
     },
     {
      "t": "X remembers what matters without any list. The rest wasn't important.",
-     "w": {
-      "N": 1
-     },
+     "w": {},
      "b": [
       "pattern-abstraction"
      ],
@@ -9675,7 +9599,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 98,
@@ -9727,9 +9655,7 @@
     },
     {
      "t": "X delegates the loop to someone who genuinely enjoys closing things.",
-     "w": {
-      "E": 1
-     },
+     "w": {},
      "b": [
       "social-initiation"
      ],
@@ -9747,9 +9673,7 @@
     },
     {
      "t": "X keeps a mental list of exactly three things. Everything else can wait.",
-     "w": {
-      "T": 1
-     },
+     "w": {},
      "b": [
       "efficiency-prioritization"
      ],
@@ -9762,7 +9686,11 @@
      ]
     }
    ],
-   "status": "uncalibrated"
+   "status": "uncalibrated",
+   "signal": [
+    "uncertainty_attitude"
+   ],
+   "contrast": "J_P"
   },
   {
    "id": 99,
@@ -9856,7 +9784,8 @@
    "lin": {
     "facet": "new_tool_search analogue (self-authored 4-way function probe)",
     "strength": "moderate"
-   }
+   },
+   "contrast": "S_N"
   }
  ]
 }
