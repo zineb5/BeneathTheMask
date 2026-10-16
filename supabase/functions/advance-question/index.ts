@@ -104,7 +104,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
           voted: counts.voted,
           pending: counts.pending,
           ...(canSeeGauge ? { option_counts: counts.option_counts } : {}),
-          ...(canSeeGauge ? { subject_answered: progress.answered, subject_complete: false } : {}),
+          // Completion count goes to EVERYONE (a count, never answer content):
+          // the room must see why the reveal is gated. Content stays private.
+          subject_answered: progress.answered,
+          subject_complete: false,
           room_idx: idx,
           waiting_for_subject: true,
           version: API_VERSION,

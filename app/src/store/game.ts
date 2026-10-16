@@ -480,6 +480,11 @@ export const useGame = create<GameState>()((set, get) => ({
         }
         await get().resync();
       } else {
+        // status 'question' — apply the fresh payload immediately (new
+        // question, refreshed counts, or the waiting_for_subject gate) so the
+        // controller's click gives instant feedback instead of feeling dead.
+        const fresh = normalizeQuestion(data);
+        if (fresh) set({ question: fresh, momentum: {} });
         await get().resync();
       }
     } catch (err) {

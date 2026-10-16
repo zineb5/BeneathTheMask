@@ -50,6 +50,11 @@ export function QuestionLoop({ isHost: _ignored }: { isHost: boolean }) {
   const expected = question.expected;
   const tally = typeof answered === 'number' && typeof expected === 'number';
   const allGuessesIn = tally && expected > 0 && answered >= expected;
+  // Final-question gate (spec: the reveal never precedes the subject's 12th
+  // private answer). Without this the controller's click silently no-ops
+  // against the server's waiting_for_subject guard — a "dead button".
+  const subjectBlocking =
+    question.idx === TOTAL_QUESTIONS - 1 && question.subject_complete === false;
   const canSeeGauge = true;
 
   return (
@@ -154,10 +159,14 @@ export function QuestionLoop({ isHost: _ignored }: { isHost: boolean }) {
               <button
                 type="button"
                 className="btn btn-ghost"
-                disabled={!allGuessesIn}
+                disabled={!allGuessesIn || subjectBlocking}
                 onClick={() => void advance()}
               >
-                {allGuessesIn ? 'Next question' : 'Waiting for all guesses'}
+                {subjectBlocking
+                  ? `Waiting for the subject (${question.subject_answered ?? 0}/${TOTAL_QUESTIONS})`
+                  : allGuessesIn
+                    ? 'Next question'
+                    : 'Waiting for all guesses'}
               </button>
               {!allGuessesIn && (
                 <button type="button" className="btn btn-ghost" onClick={() => void advance(true)}>

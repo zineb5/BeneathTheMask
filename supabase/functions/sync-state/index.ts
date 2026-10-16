@@ -61,11 +61,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
             voted: counts.voted,
             pending: counts.pending,
             // The group can see anonymous vote momentum, never identities or
-            // choices. Subject completion remains private to the subject/host.
+            // choices. Subject COMPLETION (n/12 — a count, never answer
+            // content) is shared with everyone: without it a non-host
+            // controller clicks "Next question" at q12, the server answers
+            // waiting_for_subject, and the button looks dead.
             option_counts: counts.option_counts,
-            ...((isSubject || player.id === room.host_player_id)
-              ? { subject_answered: progress.answered, subject_complete: progress.complete }
-              : {}),
+            subject_answered: progress.answered,
+            subject_complete: progress.complete,
             room_idx: roomIdx,
           };
         }

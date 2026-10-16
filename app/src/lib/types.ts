@@ -166,7 +166,8 @@ export interface ActiveQuestion {
   pending?: string[];
   /** Anonymous group totals, visible only to the host and subject. */
   option_counts?: number[];
-  /** Private questionnaire progress, visible only to the host and subject. */
+  /** Subject's private progress as a COUNT (n/12 — never answer content).
+   *  Shared with everyone so the room understands the final-question gate. */
   subject_answered?: number;
   subject_complete?: boolean;
 }
